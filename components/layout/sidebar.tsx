@@ -121,10 +121,14 @@ function normalizePath(pathname: string) {
 
 export function Sidebar({
   pathname,
-  user
+  user,
+  className,
+  onNavigate
 }: {
   pathname: string;
   user: { username: string; full_name: string; role: AppRole } | null;
+  className?: string;
+  onNavigate?: () => void;
 }) {
   async function handleLogout() {
     window.sessionStorage.removeItem(TAB_SESSION_STORAGE_KEY);
@@ -188,7 +192,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="sticky top-0 flex h-screen flex-col overflow-hidden border-r border-[#ead7c9] bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.16),transparent_20%),linear-gradient(180deg,#fff8f2_0%,#fff2e8_30%,#fff7f1_62%,#fffdf9_100%)] text-slate-900 shadow-[0_28px_80px_rgba(168,116,84,0.16)] transition-colors dark:border-[#21324c] dark:bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.16),transparent_22%),linear-gradient(180deg,#08111f_0%,#0d1728_20%,#111d34_58%,#132038_100%)] dark:text-white dark:shadow-[0_28px_80px_rgba(8,17,31,0.34)]">
+    <aside className={cn("sticky top-0 flex h-screen flex-col overflow-hidden border-r border-[#ead7c9] bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.16),transparent_20%),linear-gradient(180deg,#fff8f2_0%,#fff2e8_30%,#fff7f1_62%,#fffdf9_100%)] text-slate-900 shadow-[0_28px_80px_rgba(168,116,84,0.16)] transition-colors dark:border-[#21324c] dark:bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.16),transparent_22%),linear-gradient(180deg,#08111f_0%,#0d1728_20%,#111d34_58%,#132038_100%)] dark:text-white dark:shadow-[0_28px_80px_rgba(8,17,31,0.34)]", className)}>
       <div className="border-b border-[#eadbcf] px-5 py-5 dark:border-white/10">
         <div className="rounded-[1.75rem] border border-[#ecdccf] bg-white/70 p-4 shadow-[0_20px_45px_rgba(221,184,159,0.18),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
           <div className="flex items-center gap-4">
@@ -252,6 +256,7 @@ export function Sidebar({
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
                     className={cn(
                       "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3.5 py-3 text-sm font-medium transition",
                       active

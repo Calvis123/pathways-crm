@@ -139,8 +139,8 @@ export function LandingPage() {
         <div className="mx-auto max-w-7xl rounded-[1.75rem] border border-[#eadfd0]/90 bg-[#fffaf4]/88 px-4 py-3 shadow-[0_20px_60px_rgba(33,51,67,0.08)] backdrop-blur-2xl transition-colors dark:border-white/10 dark:bg-[#09111f]/78 dark:shadow-[0_24px_70px_rgba(2,6,23,0.34)]">
           <div className="flex items-center justify-between gap-4">
           <Link href="/" className="group flex min-w-0 items-center gap-3">
-            <div className="rounded-[1.35rem] border border-[#eadfd0] bg-white p-2.5 shadow-[0_14px_34px_rgba(33,51,67,0.08)] transition group-hover:-translate-y-0.5 dark:border-white/10 dark:bg-white/[0.06] dark:shadow-[0_18px_38px_rgba(2,6,23,0.24)]">
-              <BrandLogo priority imageClassName="w-[156px] rounded-lg bg-transparent px-1 py-1 shadow-none ring-0" />
+            <div className="rounded-[1.35rem] border border-[#eadfd0] bg-white p-2.5 shadow-[0_14px_34px_rgba(33,51,67,0.08)] transition group-hover:-translate-y-0.5 dark:border-white/15 dark:bg-white dark:shadow-[0_18px_38px_rgba(2,6,23,0.24)]">
+              <BrandLogo priority imageClassName="w-[156px] rounded-lg bg-white px-1 py-1 shadow-none ring-0" />
             </div>
             <div className="hidden min-w-0 md:block">
               <p className="truncate text-[11px] font-semibold uppercase tracking-[0.28em] text-[#c9692c] dark:text-[#ffbeab]">

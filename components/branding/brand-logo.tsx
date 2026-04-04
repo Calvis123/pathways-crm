@@ -13,13 +13,13 @@ export function BrandLogo({
   return (
     <div className={cn("flex items-center", className)}>
       <Image
-        src="/barak-pathways-logo.jpeg"
+        src="/barak-pathways-logo.png"
         alt="Barak Pathways"
-        width={188}
-        height={54}
+        width={220}
+        height={62}
         priority={priority}
         unoptimized
-        className={cn("block h-auto w-[148px] rounded-md bg-white object-contain", imageClassName)}
+        className={cn("block h-auto w-[148px] rounded-md bg-transparent object-contain", imageClassName)}
       />
     </div>
   );
