@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { createPublicIeltsLead } from "@/lib/data";
+import { normalizeKenyanPhone } from "@/lib/utils";
+
+const schema = z.object({
+  full_name: z.string().min(2),
+  email: z.string().email(),
+  phone: z.string().min(9),
+  location: z.string().optional(),
+  target_score: z.string().optional(),
+  destination: z.string().optional(),
+  source: z.string().optional(),
+  campaign: z.string().optional(),
+  website: z.string().optional()
+});
+
+export async function POST(request: Request) {
+  try {
+    const payload = schema.parse(await request.json());
+
+    if (payload.website) {
+      return NextResponse.json({ ok: true });
+    }
+
+    const phone = normalizeKenyanPhone(payload.phone);
+    if (!phone) {
+      return NextResponse.json(
+        { error: "Please enter a valid Kenyan phone number." },
+        { status: 400 }
+      );
+    }
+
+    const student = await createPublicIeltsLead({
+      ...payload,
+      phone
+    });
+
+    return NextResponse.json({
+      ok: true,
+      studentId: student.id,
+      whatsappUrl: "https://wa.me/254113043315",
+      consultationUrl: "/book-consultation"
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error." },
+      { status: 400 }
+    );
+  }
+}
