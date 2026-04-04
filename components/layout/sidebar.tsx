@@ -3,14 +3,14 @@
 import type { Route } from "next";
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Bell,
   BriefcaseBusiness,
   Calculator,
   CalendarCheck,
+  ChevronDown,
   CreditCard,
   FileCheck2,
   FileBarChart,
@@ -35,7 +35,7 @@ import { BrandLogo } from "@/components/branding/brand-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/types";
-import { hasRouteAccess, roleLabel } from "@/lib/auth";
+import { hasRouteAccess, roleLabel } from "@/lib/auth-shared";
 import { Button } from "@/components/ui/button";
 
 type Item = {
@@ -126,8 +126,6 @@ export function Sidebar({
   pathname: string;
   user: { username: string; full_name: string; role: AppRole } | null;
 }) {
-  const router = useRouter();
-
   async function handleLogout() {
     window.sessionStorage.removeItem(TAB_SESSION_STORAGE_KEY);
     await fetch("/api/session/logout", { method: "POST" });
@@ -149,13 +147,45 @@ export function Sidebar({
 
   const currentPath = normalizePath(pathname);
 
+  const activeSectionTitles = useMemo(
+    () =>
+      new Set(
+        visibleSections
+          .filter((section) =>
+            section.items.some((item) => {
+              const itemPath = normalizePath(item.href);
+              return (
+                currentPath === itemPath ||
+                currentPath.startsWith(`${itemPath}/`) ||
+                (itemPath === "/dashboard" && currentPath === "/")
+              );
+            })
+          )
+          .map((section) => section.title)
+      ),
+    [currentPath, visibleSections]
+  );
+
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
-    for (const section of visibleSections) {
-      for (const item of section.items.slice(0, 4)) {
-        router.prefetch(item.href);
+    setOpenSections((current) => {
+      const next: Record<string, boolean> = {};
+
+      for (const section of visibleSections) {
+        next[section.title] = current[section.title] ?? activeSectionTitles.has(section.title);
       }
-    }
-  }, [router, visibleSections]);
+
+      return next;
+    });
+  }, [activeSectionTitles, visibleSections]);
+
+  function toggleSection(title: string) {
+    setOpenSections((current) => ({
+      ...current,
+      [title]: !current[title]
+    }));
+  }
 
   return (
     <aside className="sticky top-0 flex h-screen flex-col overflow-hidden border-r border-[#ead7c9] bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.16),transparent_20%),linear-gradient(180deg,#fff8f2_0%,#fff2e8_30%,#fff7f1_62%,#fffdf9_100%)] text-slate-900 shadow-[0_28px_80px_rgba(168,116,84,0.16)] transition-colors dark:border-[#21324c] dark:bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.16),transparent_22%),linear-gradient(180deg,#08111f_0%,#0d1728_20%,#111d34_58%,#132038_100%)] dark:text-white dark:shadow-[0_28px_80px_rgba(8,17,31,0.34)]">
@@ -164,16 +194,29 @@ export function Sidebar({
           <div className="flex items-center gap-4">
             <BrandLogo imageClassName="w-[156px] rounded-xl bg-white px-2.5 py-2 shadow-[0_14px_30px_rgba(214,176,150,0.28)] dark:shadow-[0_12px_28px_rgba(255,255,255,0.08)]" />
           </div>
-          <div className="mt-4 flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#ff7a59,#e09a54)] text-white shadow-[0_14px_24px_rgba(255,122,89,0.24)]">
-              <ShieldCheck className="h-4 w-4" />
+          {user ? (
+            <div className="mt-4 rounded-[1.5rem] border border-[#ecdccf] bg-white/72 p-4 shadow-[0_18px_40px_rgba(221,184,159,0.18),inset_0_1px_0_rgba(255,255,255,0.78)] backdrop-blur dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#ff7a59,#e09a54)] text-sm font-semibold text-white shadow-[0_14px_24px_rgba(255,122,89,0.22)]">
+                  {user.full_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold uppercase tracking-[0.22em] text-[#b5794d] dark:text-gold/80">{roleLabel(user.role)}</p>
+                  <p className="truncate text-sm font-medium text-[#17324d] dark:text-white">{user.full_name}</p>
+                  <p className="truncate text-xs text-[#6d8093] dark:text-slate-400">@{user.username}</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-4 w-full rounded-2xl border border-[#e7d3c4] bg-white/80 text-[#17324d] hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1]"
+                onClick={handleLogout}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Sign out
+              </Button>
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold uppercase tracking-[0.24em] text-[#b5794d] dark:text-gold/90">Barak CRM</p>
-              <p className="mt-1 text-sm font-medium text-[#17324d] dark:text-white">Admissions CRM Platform</p>
-              <p className="mt-2 text-sm leading-6 text-[#5a7089] dark:text-slate-300">Admissions, finance, IELTS, and operations in one place.</p>
-            </div>
-          </div>
+          ) : null}
           <ThemeToggle className="mt-4 w-full justify-center border-[#e7d3c4] bg-white/75 text-[#17324d] hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100 dark:hover:bg-white/[0.12]" />
         </div>
       </div>
@@ -181,13 +224,22 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto px-3 py-4">
         {visibleSections.map((section) => (
           <div key={section.title} className="mb-5">
-            <div className="mb-2 flex items-center gap-2 px-3">
-              <div className="h-px flex-1 bg-[#eadbcf] dark:bg-white/10" />
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b5794d] dark:text-gold/80">
+            <button
+              type="button"
+              onClick={() => toggleSection(section.title)}
+              className="mb-2 flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/50 dark:hover:bg-white/[0.04]"
+            >
+              <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#b5794d] dark:text-gold/80">
                 {section.title}
               </p>
-            </div>
-            <nav className="space-y-1.5">
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-[#b5794d] transition-transform dark:text-gold/80",
+                  openSections[section.title] ? "rotate-180" : ""
+                )}
+              />
+            </button>
+            <nav className={cn("space-y-1.5", openSections[section.title] ? "block" : "hidden")}>
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const itemPath = normalizePath(item.href);
@@ -234,31 +286,20 @@ export function Sidebar({
         ))}
       </div>
 
-      {user ? (
-        <div className="border-t border-[#eadbcf] px-4 py-4 dark:border-white/10">
-          <div className="rounded-[1.75rem] border border-[#ecdccf] bg-white/72 p-4 shadow-[0_18px_40px_rgba(221,184,159,0.18),inset_0_1px_0_rgba(255,255,255,0.78)] backdrop-blur dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#ff7a59,#e09a54)] text-sm font-semibold text-white shadow-[0_14px_24px_rgba(255,122,89,0.22)]">
-                {user.full_name.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold uppercase tracking-[0.22em] text-[#b5794d] dark:text-gold/80">{roleLabel(user.role)}</p>
-                <p className="truncate text-sm font-medium text-[#17324d] dark:text-white">{user.full_name}</p>
-                <p className="truncate text-xs text-[#6d8093] dark:text-slate-400">@{user.username}</p>
-              </div>
+      <div className="border-t border-[#eadbcf] px-4 py-4 dark:border-white/10">
+        <div className="rounded-[1.75rem] border border-[#ecdccf] bg-white/72 p-4 shadow-[0_18px_40px_rgba(221,184,159,0.18),inset_0_1px_0_rgba(255,255,255,0.78)] backdrop-blur dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#ff7a59,#e09a54)] text-white shadow-[0_14px_24px_rgba(255,122,89,0.24)]">
+              <ShieldCheck className="h-4 w-4" />
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="mt-4 w-full rounded-2xl border border-[#e7d3c4] bg-white/80 text-[#17324d] hover:bg-white dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1]"
-              onClick={handleLogout}
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Sign out
-            </Button>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-[0.24em] text-[#b5794d] dark:text-gold/90">Barak CRM</p>
+              <p className="mt-1 text-sm font-medium text-[#17324d] dark:text-white">Admissions CRM Platform</p>
+              <p className="mt-2 text-sm leading-6 text-[#5a7089] dark:text-slate-300">Admissions, finance, IELTS, and operations in one place.</p>
+            </div>
           </div>
         </div>
-      ) : null}
+      </div>
     </aside>
   );
 }

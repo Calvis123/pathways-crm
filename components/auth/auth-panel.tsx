@@ -64,10 +64,7 @@ export function AuthPanel() {
 
       establishTabSession();
       const redirectTo = (body.redirectTo ?? "/dashboard") as Route;
-      void router.prefetch(redirectTo);
-      startTransition(() => {
-        router.replace(redirectTo);
-      });
+      window.location.assign(redirectTo);
     } catch {
       setError("Could not sign in. Please try again.");
       setLoading(false);
