@@ -268,21 +268,24 @@ export function LandingPage() {
               </div>
 
               <div className="mt-10 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-3xl border border-[#f6ddd2] bg-[linear-gradient(180deg,#fff4ee_0%,#ffe9df_100%)] p-5 shadow-[0_18px_48px_rgba(33,51,67,0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(33,43,64,0.98),rgba(21,31,49,0.98))] dark:shadow-[0_20px_55px_rgba(2,6,23,0.3)]">
-                  <p className="text-sm font-semibold text-[#fffdfb] dark:text-white">Better lead handling</p>
-                  <p className="mt-2 text-sm leading-6 text-[#72849a] dark:text-slate-300">
+                <div className="rounded-[1.9rem] border border-[#efd8cb] bg-[linear-gradient(180deg,#fff8f4_0%,#ffefe6_100%)] p-5 shadow-[0_18px_48px_rgba(33,51,67,0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(33,43,64,0.98),rgba(21,31,49,0.98))] dark:shadow-[0_20px_55px_rgba(2,6,23,0.3)]">
+                  <div className="mb-3 h-1.5 w-14 rounded-full bg-[linear-gradient(90deg,#ff7a59,#e09a54)]" />
+                  <p className="text-base font-semibold leading-6 text-[#24384d] dark:text-white">Better lead handling</p>
+                  <p className="mt-2 text-sm leading-6 text-[#5f7085] dark:text-slate-300">
                     Keep every inquiry, consultation, and application visible across the full student journey.
                   </p>
                 </div>
-                <div className="rounded-3xl border border-[#f6ddd2] bg-[linear-gradient(180deg,#fff4ee_0%,#ffe6da_100%)] p-5 shadow-[0_18px_48px_rgba(33,51,67,0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(33,43,64,0.98),rgba(21,31,49,0.98))] dark:shadow-[0_20px_55px_rgba(2,6,23,0.3)]">
-                  <p className="text-sm font-semibold text-[#fffdfb] dark:text-white">Cleaner team workflows</p>
-                  <p className="mt-2 text-sm leading-6 text-[#72849a] dark:text-slate-300">
+                <div className="rounded-[1.9rem] border border-[#efd8cb] bg-[linear-gradient(180deg,#fff8f4_0%,#ffede2_100%)] p-5 shadow-[0_18px_48px_rgba(33,51,67,0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(33,43,64,0.98),rgba(21,31,49,0.98))] dark:shadow-[0_20px_55px_rgba(2,6,23,0.3)]">
+                  <div className="mb-3 h-1.5 w-14 rounded-full bg-[linear-gradient(90deg,#ff7a59,#e09a54)]" />
+                  <p className="text-base font-semibold leading-6 text-[#24384d] dark:text-white">Cleaner team workflows</p>
+                  <p className="mt-2 text-sm leading-6 text-[#5f7085] dark:text-slate-300">
                     Give admissions, operations, finance, and IELTS teams dedicated spaces to work with confidence.
                   </p>
                 </div>
-                <div className="rounded-3xl border border-[#f6ddd2] bg-[linear-gradient(180deg,#fff5ef_0%,#ffe9de_100%)] p-5 shadow-[0_18px_48px_rgba(33,51,67,0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(33,43,64,0.98),rgba(21,31,49,0.98))] dark:shadow-[0_20px_55px_rgba(2,6,23,0.3)]">
-                  <p className="text-sm font-semibold text-[#fffdfb] dark:text-white">Stronger leadership visibility</p>
-                  <p className="mt-2 text-sm leading-6 text-[#72849a] dark:text-slate-300">
+                <div className="rounded-[1.9rem] border border-[#efd8cb] bg-[linear-gradient(180deg,#fff8f4_0%,#fff0e6_100%)] p-5 shadow-[0_18px_48px_rgba(33,51,67,0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(33,43,64,0.98),rgba(21,31,49,0.98))] dark:shadow-[0_20px_55px_rgba(2,6,23,0.3)]">
+                  <div className="mb-3 h-1.5 w-14 rounded-full bg-[linear-gradient(90deg,#ff7a59,#e09a54)]" />
+                  <p className="text-base font-semibold leading-6 text-[#24384d] dark:text-white">Stronger leadership visibility</p>
+                  <p className="mt-2 text-sm leading-6 text-[#5f7085] dark:text-slate-300">
                     Use reports, reminders, commissions, and forecasting to see what needs action next.
                   </p>
                 </div>
