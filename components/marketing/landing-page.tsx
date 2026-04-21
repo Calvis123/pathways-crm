@@ -136,11 +136,14 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fff8f4_0%,#fff2eb_52%,#fffaf6_100%)] text-slate-900 transition-colors dark:bg-[linear-gradient(180deg,#08111f_0%,#0c1628_52%,#0f1b31_100%)] dark:text-slate-100">
       <header className="sticky top-0 z-40 px-3 pt-3 transition-colors sm:px-4 lg:px-6">
-        <div className="mx-auto max-w-7xl rounded-[1.75rem] border border-[#eadfd0]/90 bg-[#fffaf4]/88 px-4 py-3 shadow-[0_20px_60px_rgba(33,51,67,0.08)] backdrop-blur-2xl transition-colors dark:border-white/10 dark:bg-[#09111f]/78 dark:shadow-[0_24px_70px_rgba(2,6,23,0.34)]">
-          <div className="flex items-center justify-between gap-4">
+        <div className="mx-auto max-w-7xl rounded-[1.65rem] border border-[#eadfd0]/90 bg-[#fffaf4]/88 px-4 py-3 shadow-[0_20px_60px_rgba(33,51,67,0.08)] backdrop-blur-2xl transition-colors dark:border-white/10 dark:bg-[#09111f]/78 dark:shadow-[0_24px_70px_rgba(2,6,23,0.34)]">
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
           <Link href="/" className="group flex min-w-0 items-center gap-3">
-            <div className="rounded-[1.35rem] border border-[#eadfd0] bg-transparent p-2.5 shadow-[0_14px_34px_rgba(33,51,67,0.08)] transition group-hover:-translate-y-0.5 dark:border-white/15 dark:bg-transparent dark:shadow-[0_18px_38px_rgba(2,6,23,0.24)]">
-              <BrandLogo priority imageClassName="w-[156px] px-1 py-1 shadow-none ring-0" />
+            <div className="rounded-[1.05rem] border border-transparent bg-transparent p-1 transition group-hover:-translate-y-0.5 dark:border-transparent dark:bg-transparent">
+              <BrandLogo
+                priority
+                imageClassName="h-[64px] w-auto max-w-[118px] object-contain object-center shadow-none ring-0 drop-shadow-none dark:drop-shadow-none sm:h-[74px] sm:max-w-[140px] lg:h-[84px] lg:max-w-[160px]"
+              />
             </div>
             <div className="hidden min-w-0 md:block">
               <p className="truncate text-[11px] font-semibold uppercase tracking-[0.28em] text-[#c9692c] dark:text-[#ffbeab]">
@@ -180,13 +183,13 @@ export function LandingPage() {
               type="button"
               variant="secondary"
               onClick={() => setShowAuthModal(true)}
-              className="hidden rounded-full border border-[#e1cab9] bg-white/96 px-4 text-[#425166] shadow-[0_12px_24px_rgba(33,51,67,0.06)] hover:border-[#d18b5b] hover:bg-[#fff3ea] hover:text-[#213343] dark:border-white/10 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/16 md:inline-flex sm:px-5"
+              className="hidden h-11 rounded-full border border-[#e1cab9] bg-white/96 px-4 text-[#425166] shadow-[0_12px_24px_rgba(33,51,67,0.06)] hover:border-[#d18b5b] hover:bg-[#fff3ea] hover:text-[#213343] dark:border-white/10 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/16 md:inline-flex sm:px-5"
             >
               Sign in
             </Button>
             <LinkButton
               href="/book-consultation"
-              className="hidden rounded-full bg-[linear-gradient(135deg,#ff7a59,#ef6b49)] px-4 text-white shadow-[0_16px_30px_rgba(255,122,89,0.24)] hover:bg-[#ef6b49] md:inline-flex sm:px-5"
+              className="hidden h-11 rounded-full bg-[linear-gradient(135deg,#ff7a59,#ef6b49)] px-4 text-white shadow-[0_16px_30px_rgba(255,122,89,0.24)] hover:bg-[#ef6b49] md:inline-flex sm:px-5"
             >
               Book Consultation
             </LinkButton>
