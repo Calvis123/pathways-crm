@@ -87,7 +87,7 @@ export function StudentPortalAccessCard({
                   Secure Student Portal
                 </div>
                 <div className="mt-5 flex items-center gap-4">
-                  <BrandLogo priority imageClassName="w-[178px] rounded-2xl bg-white px-3 py-2 shadow-[0_16px_36px_rgba(33,51,67,0.08)] ring-1 ring-[#eadfd0] dark:shadow-[0_20px_40px_rgba(2,6,23,0.25)] dark:ring-white/10" />
+                  <BrandLogo priority imageClassName="w-[178px] px-3 py-2 shadow-[0_16px_36px_rgba(33,51,67,0.08)] dark:shadow-[0_20px_40px_rgba(2,6,23,0.25)]" />
                   <ThemeToggle className="border-[#ead5c4] bg-white/90 text-[#173042] dark:border-white/10 dark:bg-white/10 dark:text-white" />
                 </div>
                 <h1 className="mt-6 text-4xl font-semibold tracking-tight text-[#173042] dark:text-white sm:text-5xl">

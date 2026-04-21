@@ -36,7 +36,7 @@ export function CrmShell({
             >
               <Menu className="h-5 w-5" />
             </button>
-            <BrandLogo imageClassName="w-[136px] rounded-xl bg-white px-2 py-1.5 shadow-[0_12px_24px_rgba(33,51,67,0.08)] dark:shadow-[0_10px_22px_rgba(255,255,255,0.08)]" />
+            <BrandLogo imageClassName="w-[136px] px-2 py-1.5 shadow-[0_12px_24px_rgba(33,51,67,0.08)] dark:shadow-[0_10px_22px_rgba(255,255,255,0.08)]" />
             <ThemeToggle className="h-11 min-w-11 justify-center px-3 border-[#e7d3c4] bg-white/80 text-[#17324d] dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
           </div>
         </div>

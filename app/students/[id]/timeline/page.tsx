@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
+import { StudentProfileNav } from "@/components/layout/student-profile-nav";
 import { StudentTimelineView } from "@/components/tables/student-timeline-view";
-import { getDocuments, getStudentActivityTimeline, getStudentById, getStudentNotes } from "@/lib/data";
+import { getDocuments, getLeadTemperatureSnapshotByStudentId, getStudentActivityTimeline, getStudentById, getStudentNotes } from "@/lib/data";
 
 export default async function StudentTimelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -8,18 +9,22 @@ export default async function StudentTimelinePage({ params }: { params: Promise<
 
   if (!student) notFound();
 
-  const [documents, notes, activities] = await Promise.all([
+  const [documents, notes, activities, temperature] = await Promise.all([
     getDocuments(),
     getStudentNotes(id),
-    getStudentActivityTimeline(id)
+    getStudentActivityTimeline(id),
+    getLeadTemperatureSnapshotByStudentId(id)
   ]);
 
   return (
-    <StudentTimelineView
-      student={student}
-      documents={documents.filter((document) => document.student_id === id)}
-      notes={notes}
-      activities={activities}
-    />
+    <div className="space-y-6">
+      <StudentProfileNav studentId={student.id} active="timeline" temperature={temperature} />
+      <StudentTimelineView
+        student={student}
+        documents={documents.filter((document) => document.student_id === id)}
+        notes={notes}
+        activities={activities}
+      />
+    </div>
   );
 }

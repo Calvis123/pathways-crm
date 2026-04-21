@@ -3,7 +3,7 @@ import { z } from "zod";
 import { deleteStudentNote, updateStudentNote } from "@/lib/data";
 
 const schema = z.object({
-  note_text: z.string().min(2)
+  note_text: z.string().trim().min(2, "Interaction notes are required.")
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

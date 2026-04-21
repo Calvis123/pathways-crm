@@ -149,7 +149,7 @@ export function StudentPortalDashboard({
       <header className="overflow-hidden border-b border-[#eadbcf] bg-[radial-gradient(circle_at_top_left,rgba(255,122,89,0.14),transparent_24%),linear-gradient(135deg,#fffaf4_0%,#fff1e7_46%,#fff7f1_100%)] text-[#173042] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,122,89,0.16),transparent_24%),linear-gradient(135deg,#0b1424_0%,#132037_46%,#182845_100%)] dark:text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-6">
           <div className="flex items-center gap-4">
-            <BrandLogo imageClassName="w-[148px] rounded-2xl bg-white px-3 py-2 shadow-[0_16px_30px_rgba(15,23,42,0.12)] dark:ring-1 dark:ring-white/10 dark:shadow-[0_16px_30px_rgba(15,23,42,0.16)]" />
+            <BrandLogo imageClassName="w-[148px] px-3 py-2 shadow-[0_16px_30px_rgba(15,23,42,0.12)] dark:shadow-[0_16px_30px_rgba(15,23,42,0.16)]" />
             <div>
               <h1 className="text-2xl font-semibold">Student Portal</h1>
               <p className="mt-1 text-sm text-[#5a7088] dark:text-white/80">Welcome back, {student.full_name}</p>

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
+import { cashOutline, flashOutline, warningOutline } from "ionicons/icons";
+import { IonIcon } from "@/components/ui/ion-icon";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 type ReportType = "overview" | "cashflow" | "credit" | "expenses";
@@ -164,7 +166,13 @@ export function FinancialReportsManager({
                     : "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100"
               }`}
             >
-              <span className="text-2xl">
+              <span className="text-current">
+                <IonIcon
+                  icon={alert.tone === "critical" ? warningOutline : alert.tone === "warning" ? flashOutline : cashOutline}
+                  className="h-6 w-6"
+                />
+              </span>
+              <span className="hidden text-2xl">
                 {alert.tone === "critical" ? "⚠️" : alert.tone === "warning" ? "⚡" : "💰"}
               </span>
               <div>

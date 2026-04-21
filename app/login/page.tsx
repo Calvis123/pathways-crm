@@ -10,7 +10,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,122,89,0.12),transparent_28%),radial-gradient(circle_at_78%_18%,rgba(33,51,67,0.12),transparent_24%),linear-gradient(180deg,#fffaf4_0%,#fff2e7_100%)]" />
       <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl flex-col justify-center">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <BrandLogo imageClassName="w-[188px] rounded-xl bg-white px-3 py-2 ring-1 ring-[#eadfd0] dark:ring-white/10" priority />
+          <BrandLogo imageClassName="w-[188px] px-3 py-2" priority />
           <div className="flex items-center gap-3">
             <ThemeToggle compact />
             <Link

@@ -265,6 +265,23 @@ export interface StudentActivityEvent {
   meta: string | null;
 }
 
+export type LeadTemperatureStatus = "cold" | "warm" | "hot";
+
+export interface LeadTemperatureSnapshot {
+  studentId: string;
+  score: number;
+  status: LeadTemperatureStatus;
+  label: "Cold" | "Warm" | "Hot";
+  colorName: "Yellow" | "Green" | "Red";
+  daysSinceLastActivity: number | null;
+  contactCount: number;
+  responseCount: number;
+  engagementCount: number;
+  followUpCount: number;
+  highIntentCount: number;
+  lastInteractionAt: string | null;
+}
+
 export interface SegmentSummary {
   segment: SegmentKey;
   count: number;

@@ -4,7 +4,7 @@ import { createStudentNote } from "@/lib/data";
 
 const schema = z.object({
   student_id: z.string().min(1),
-  note_text: z.string().min(2),
+  note_text: z.string().trim().min(2, "Interaction notes are required."),
   note_type: z.enum(["general", "call", "meeting", "email", "whatsapp", "payment", "visa", "important"]).optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
   is_private: z.boolean().optional(),

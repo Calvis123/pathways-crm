@@ -1,12 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import type { Student, StudentStage } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  airplaneOutline,
+  briefcaseOutline,
+  chatbubbleEllipsesOutline,
+  closeCircleOutline,
+  documentTextOutline,
+  eyeOutline,
+  personOutline,
+  ribbonOutline,
+  schoolOutline
+} from "ionicons/icons";
+import type { LeadTemperatureSnapshot, Student, StudentStage } from "@/lib/types";
 import { formatCurrency, normalizeKenyanPhone } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { IonIcon } from "@/components/ui/ion-icon";
 
-const funnelStages: Array<{
+const legacyFunnelStages: Array<{
   id: StudentStage;
   name: string;
   icon: string;
@@ -24,6 +37,24 @@ const funnelStages: Array<{
   { id: "lost", name: "Lost", icon: "❌", color: "#EF4444", description: "Not proceeding" }
 ];
 
+const funnelStages: Array<{
+  id: StudentStage;
+  name: string;
+  icon: string;
+  color: string;
+  description: string;
+}> = [
+  { id: "lead", name: "Lead", icon: personOutline, color: "#6B7280", description: "New inquiry" },
+  { id: "inquiry", name: "Inquiry", icon: eyeOutline, color: "#8B5CF6", description: "Initial inquiry" },
+  { id: "consultation", name: "Consultation", icon: chatbubbleEllipsesOutline, color: "#3B82F6", description: "Meeting scheduled/completed" },
+  { id: "application", name: "Application", icon: documentTextOutline, color: "#8B5CF6", description: "Applying to universities" },
+  { id: "visa", name: "Visa", icon: airplaneOutline, color: "#EC4899", description: "Visa processing" },
+  { id: "enrolled", name: "Enrolled", icon: schoolOutline, color: "#10B981", description: "Student enrolled" },
+  { id: "placed", name: "Placed", icon: ribbonOutline, color: "#059669", description: "Placed at university" },
+  { id: "employment", name: "Employment", icon: briefcaseOutline, color: "#6366F1", description: "Employed after study" },
+  { id: "lost", name: "Lost", icon: closeCircleOutline, color: "#EF4444", description: "Not proceeding" }
+];
+
 function getPotentialValue(student: Student) {
   if (student.payment_status === "full" || student.payment_status === "paid") return 40000;
   return (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
@@ -36,11 +67,45 @@ function getWhatsappLink(student: Student) {
   return `https://wa.me/${phone.replace("+", "")}?text=${message}`;
 }
 
-export function SalesFunnelBoard({ students }: { students: Student[] }) {
+const temperatureTone: Record<LeadTemperatureSnapshot["status"], string> = {
+  cold: "bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200",
+  warm: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200",
+  hot: "bg-red-100 text-red-800 ring-1 ring-red-200"
+};
+
+export function SalesFunnelBoard({
+  students,
+  initialTemperatures
+}: {
+  students: Student[];
+  initialTemperatures: LeadTemperatureSnapshot[];
+}) {
   const [items, setItems] = useState(students);
+  const [temperatures, setTemperatures] = useState(initialTemperatures);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [activeDropStage, setActiveDropStage] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+
+  const temperatureMap = useMemo(
+    () => new Map(temperatures.map((entry) => [entry.studentId, entry])),
+    [temperatures]
+  );
+
+  const refreshTemperatures = useCallback(async () => {
+    const response = await fetch("/api/leads/temperature", { cache: "no-store" });
+    if (!response.ok) return;
+    const body = (await response.json()) as { temperatures?: LeadTemperatureSnapshot[] };
+    if (Array.isArray(body.temperatures)) {
+      setTemperatures(body.temperatures);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      void refreshTemperatures();
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [refreshTemperatures]);
 
   const metrics = useMemo(() => {
     const totalPipeline = items.reduce((sum, student) => sum + getPotentialValue(student), 0);
@@ -50,16 +115,20 @@ export function SalesFunnelBoard({ students }: { students: Student[] }) {
       const now = new Date();
       return student.stage === "enrolled" && updatedAt.getMonth() === now.getMonth() && updatedAt.getFullYear() === now.getFullYear();
     }).length;
-    const avgDealValue = items.length > 0 ? Math.round(totalPipeline / items.length) : 0;
+    const hotLeads = temperatures.filter((item) => item.status === "hot").length;
+    const warmLeads = temperatures.filter((item) => item.status === "warm").length;
+    const coldLeads = temperatures.filter((item) => item.status === "cold").length;
 
     return {
       totalStudents: items.length,
       totalPipeline,
       activeDeals,
       wonThisMonth,
-      avgDealValue
+      hotLeads,
+      warmLeads,
+      coldLeads
     };
-  }, [items]);
+  }, [items, temperatures]);
 
   const grouped = useMemo(() => {
     const groups = funnelStages.map((stage) => {
@@ -107,6 +176,7 @@ export function SalesFunnelBoard({ students }: { students: Student[] }) {
     }
 
     setStatus(`${student.full_name} moved to ${newStage}.`);
+    void refreshTemperatures();
   }
 
   return (
@@ -133,9 +203,11 @@ export function SalesFunnelBoard({ students }: { students: Student[] }) {
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Students enrolled</p>
         </Card>
         <Card className="border-slate-200 dark:border-white/10 dark:bg-[linear-gradient(180deg,#1b263c_0%,#141f33_100%)]">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Avg Deal Value</p>
-          <p className="mt-3 text-3xl font-semibold text-ink dark:text-white">{formatCurrency(metrics.avgDealValue)}</p>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Per student</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Lead Temperature</p>
+          <p className="mt-3 text-xl font-semibold text-ink dark:text-white">
+            Hot {metrics.hotLeads} · Warm {metrics.warmLeads} · Cold {metrics.coldLeads}
+          </p>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Auto-scored by engagement and recency</p>
         </Card>
       </div>
 
@@ -153,7 +225,7 @@ export function SalesFunnelBoard({ students }: { students: Student[] }) {
               <div className="px-4 py-4 text-white" style={{ backgroundColor: stage.color }}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h2 className="text-base font-semibold">
-                    <span className="mr-2">{stage.icon}</span>
+                    <IonIcon icon={stage.icon} className="mr-2 h-4 w-4" />
                     {stage.name}
                   </h2>
                   <div className="flex items-center gap-2">
@@ -197,6 +269,7 @@ export function SalesFunnelBoard({ students }: { students: Student[] }) {
                 {stage.students.map((student) => {
                   const totalPaid = student.consultation_upfront_paid + student.consultation_balance_paid;
                   const whatsappLink = getWhatsappLink(student);
+                  const temperature = temperatureMap.get(student.id);
 
                   return (
                     <article
@@ -214,10 +287,22 @@ export function SalesFunnelBoard({ students }: { students: Student[] }) {
                         draggingId === student.id ? "opacity-50" : ""
                       }`}
                     >
-                      <Link href={`/students/${student.id}`} className="block text-sm font-semibold text-ink hover:text-ocean dark:text-white dark:hover:text-[#ffbeab]">
-                        {student.full_name}
-                      </Link>
+                      <div className="flex items-start justify-between gap-2">
+                        <Link href={`/students/${student.id}`} className="block text-sm font-semibold text-ink hover:text-ocean dark:text-white dark:hover:text-[#ffbeab]">
+                          {student.full_name}
+                        </Link>
+                        {temperature ? (
+                          <Badge className={temperatureTone[temperature.status]}>
+                            {temperature.label}
+                          </Badge>
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{student.country_interest ?? "No country"}</p>
+                      {temperature ? (
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          Score {temperature.score} · Last active {temperature.daysSinceLastActivity ?? "-"}d
+                        </p>
+                      ) : null}
                       <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
                         {student.phone ? (
                           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600 dark:bg-white/[0.08] dark:text-slate-300">

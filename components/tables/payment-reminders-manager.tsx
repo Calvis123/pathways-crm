@@ -3,6 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { checkmarkCircleOutline } from "ionicons/icons";
+import { IonIcon } from "@/components/ui/ion-icon";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Student } from "@/lib/types";
 
@@ -218,8 +220,9 @@ export function PaymentRemindersManager({
               className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white dark:border-white/10 dark:bg-[#0f1b31]"
             >
               <div className={`flex items-center justify-between px-5 py-4 ${headerTones[category.key]}`}>
-                <h3 className="font-serif text-lg">
-                  {category.icon} {category.name}
+                <h3 className="flex items-center gap-2 font-serif text-lg">
+                  <IonIcon icon={category.icon} className="h-5 w-5" />
+                  {category.name}
                 </h3>
                 <span className="rounded-full bg-black/10 px-3 py-1 text-xs font-semibold">
                   {category.students.length} students

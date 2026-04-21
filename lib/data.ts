@@ -18,6 +18,7 @@ import type {
   DocumentRecord,
   EmailTemplate,
   ExpenseRecord,
+  LocalDatabase,
   PaymentRecord,
   PortalAccessRecord,
   PortalActivity,
@@ -28,11 +29,13 @@ import type {
   SegmentSummary,
   Student,
   StudentActivityEvent,
+  LeadTemperatureSnapshot,
   StudentNote,
   StudentStage,
   Task
 } from "@/lib/types";
 import { stageOrder } from "@/lib/constants";
+import { classifyLeadTemperature } from "@/lib/lead-temperature";
 
 function admin() {
   return createAdminClient();
@@ -128,6 +131,97 @@ function attachStudentBasics(student: Student | undefined) {
     country_interest: student.country_interest,
     stage: student.stage
   };
+}
+
+function getConsultationTransitionState(student: Student, stage: StudentStage, timestamp: string) {
+  if (stage !== "consultation") {
+    return {
+      stage,
+      updated_at: timestamp
+    };
+  }
+
+  return {
+    stage,
+    consultation_requested: true,
+    consultation_status:
+      student.consultation_status === "pending" || student.consultation_status === "confirmed"
+        ? student.consultation_status
+        : "pending",
+    consultation_date: student.consultation_date ?? timestamp,
+    updated_at: timestamp
+  };
+}
+
+function hasActiveConsultation(consultations: Consultation[], studentId: string) {
+  return consultations.some(
+    (consultation) =>
+      consultation.student_id === studentId &&
+      (consultation.status === "pending" || consultation.status === "confirmed")
+  );
+}
+
+function buildPendingConsultation(student: Student, actor: string | null, timestamp: string): Consultation {
+  return {
+    id: crypto.randomUUID(),
+    student_id: student.id,
+    scheduled_at: student.consultation_date ?? timestamp,
+    status: "pending",
+    notes: "Created automatically when the student moved to the consultation stage.",
+    created_by: actor,
+    created_at: timestamp
+  };
+}
+
+function syncLocalConsultationStage(
+  db: LocalDatabase,
+  students: Student[],
+  actor: string | null,
+  timestamp: string
+) {
+  const nextConsultations = [...db.consultations];
+
+  for (const student of students) {
+    if (!hasActiveConsultation(nextConsultations, student.id)) {
+      nextConsultations.unshift(buildPendingConsultation(student, actor, timestamp));
+    }
+  }
+
+  db.consultations = nextConsultations;
+}
+
+async function syncSupabaseConsultationStage(
+  students: Student[],
+  actor: string | null,
+  timestamp: string
+) {
+  if (students.length === 0) return;
+
+  const supabase = admin();
+  const studentIds = students.map((student) => student.id);
+  const { data, error } = await supabase
+    .from("consultations")
+    .select("student_id,status")
+    .in("student_id", studentIds)
+    .in("status", ["pending", "confirmed"]);
+
+  if (error) throw error;
+
+  const activeIds = new Set((data ?? []).map((item) => item.student_id as string));
+  const pendingConsultations = students
+    .filter((student) => !activeIds.has(student.id))
+    .map((student) => ({
+      student_id: student.id,
+      scheduled_at: student.consultation_date ?? timestamp,
+      status: "pending" as const,
+      notes: "Created automatically when the student moved to the consultation stage.",
+      created_by: actor
+    }));
+
+  if (pendingConsultations.length === 0) return;
+
+  const { error: insertError } = await supabase.from("consultations").insert(pendingConsultations);
+  if (insertError) throw insertError;
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -1146,6 +1240,93 @@ export async function runStudentBulkAction(input: {
   }
 
   if (!hasSupabaseEnv()) {
+    const db = await readDb();
+
+    if (input.action === "update_stage") {
+      if (!input.stage) throw new Error("A target stage is required.");
+
+      const timestamp = new Date().toISOString();
+      const selectedMap = new Map(selected.map((student) => [student.id, student]));
+      const nextSelected: Student[] = [];
+
+      db.students = db.students.map((student) => {
+        if (!selectedMap.has(student.id)) return student;
+        const updated = {
+          ...student,
+          ...getConsultationTransitionState(student, input.stage as StudentStage, timestamp)
+        };
+        nextSelected.push(updated);
+        return updated;
+      });
+
+      if (input.stage === "consultation") {
+        syncLocalConsultationStage(db, nextSelected, session.username ?? null, timestamp);
+      }
+
+      await writeLocalDb(db);
+      await logAudit({
+        action: "Bulk Stage Update",
+        table_name: "students",
+        record_label: `${selected.length} students`,
+        new_value: JSON.stringify({ stage: input.stage, ids: input.studentIds })
+      });
+
+      return { count: selected.length };
+    }
+
+    if (input.action === "update_payment") {
+      const paymentMode = input.paymentMode;
+      if (!paymentMode) throw new Error("A payment mode is required.");
+
+      const paymentMap = {
+        full: {
+          payment_status: "full",
+          consultation_upfront_paid: 20000,
+          consultation_balance_paid: 20000
+        },
+        partial: {
+          payment_status: "installment",
+          consultation_upfront_paid: 20000,
+          consultation_balance_paid: 0
+        },
+        none: {
+          payment_status: "pending",
+          consultation_upfront_paid: 0,
+          consultation_balance_paid: 0
+        }
+      } as const;
+
+      db.students = db.students.map((student) =>
+        input.studentIds.includes(student.id)
+          ? {
+              ...student,
+              ...paymentMap[paymentMode],
+              updated_at: new Date().toISOString()
+            }
+          : student
+      );
+
+      await writeLocalDb(db);
+      await logAudit({
+        action: "Bulk Payment Update",
+        table_name: "students",
+        record_label: `${selected.length} students`,
+        new_value: JSON.stringify({ paymentMode: input.paymentMode, ids: input.studentIds })
+      });
+
+      return { count: selected.length };
+    }
+
+    db.students = db.students.filter((student) => !input.studentIds.includes(student.id));
+    db.consultations = db.consultations.filter((consultation) => !input.studentIds.includes(consultation.student_id));
+    db.documents = db.documents.filter((document) => !input.studentIds.includes(document.student_id));
+    await writeLocalDb(db);
+    await logAudit({
+      action: "Bulk Student Delete",
+      table_name: "students",
+      record_label: `${selected.length} students`,
+      old_value: JSON.stringify(input.studentIds)
+    });
     return { count: selected.length };
   }
 
@@ -1154,13 +1335,24 @@ export async function runStudentBulkAction(input: {
   if (input.action === "update_stage") {
     if (!input.stage) throw new Error("A target stage is required.");
 
-    const updates = {
-      ...(input.stage === "consultation" ? { consultation_requested: true } : {}),
-      stage: input.stage
-    };
+    const timestamp = new Date().toISOString();
+    const selectedMap = new Map(selected.map((student) => [student.id, student]));
+    for (const student of selected) {
+      const updates = getConsultationTransitionState(student, input.stage as StudentStage, timestamp);
+      const { error } = await supabase.from("students").update(updates).eq("id", student.id);
+      if (error) throw error;
+    }
 
-    const { error } = await supabase.from("students").update(updates).in("id", input.studentIds);
-    if (error) throw error;
+    if (input.stage === "consultation") {
+      const nextSelected = input.studentIds
+        .map((id) => selectedMap.get(id))
+        .filter(Boolean)
+        .map((student) => ({
+          ...(student as Student),
+          ...getConsultationTransitionState(student as Student, "consultation", timestamp)
+        }));
+      await syncSupabaseConsultationStage(nextSelected, session.username ?? null, timestamp);
+    }
 
     await logAudit({
       action: "Bulk Stage Update",
@@ -1173,7 +1365,8 @@ export async function runStudentBulkAction(input: {
   }
 
   if (input.action === "update_payment") {
-    if (!input.paymentMode) throw new Error("A payment mode is required.");
+    const paymentMode = input.paymentMode;
+    if (!paymentMode) throw new Error("A payment mode is required.");
 
     const paymentMap = {
       full: {
@@ -1195,7 +1388,7 @@ export async function runStudentBulkAction(input: {
 
     const { error } = await supabase
       .from("students")
-      .update(paymentMap[input.paymentMode])
+      .update(paymentMap[paymentMode])
       .in("id", input.studentIds);
 
     if (error) throw error;
@@ -1273,12 +1466,27 @@ export async function updateStudent(id: string, input: Partial<Student>) {
     const db = await readDb();
     const next = db.students.find((student) => student.id === id);
     if (!next) throw new Error("Student not found.");
+    const timestamp = new Date().toISOString();
     const updated = {
       ...next,
       ...input,
-      updated_at: new Date().toISOString()
+      ...(input.stage
+        ? getConsultationTransitionState(
+            {
+              ...next,
+              ...input
+            } as Student,
+            input.stage,
+            timestamp
+          )
+        : {
+            updated_at: timestamp
+          })
     };
     db.students = db.students.map((student) => (student.id === id ? updated : student));
+    if (input.stage === "consultation") {
+      syncLocalConsultationStage(db, [updated], session?.username ?? null, timestamp);
+    }
     await writeLocalDb(db);
     await logAudit({
       action: "Student Updated",
@@ -1291,12 +1499,36 @@ export async function updateStudent(id: string, input: Partial<Student>) {
   }
 
   const supabase = admin();
+  const timestamp = new Date().toISOString();
   const payload = {
     ...input,
-    updated_at: new Date().toISOString()
+    ...(input.stage
+      ? getConsultationTransitionState(
+          {
+            ...allowed,
+            ...input
+          } as Student,
+          input.stage,
+          timestamp
+        )
+      : {
+          updated_at: timestamp
+        })
   };
   const { data, error } = await supabase.from("students").update(payload).eq("id", id).select("*").single();
   if (error) throw error;
+  if (input.stage === "consultation") {
+    await syncSupabaseConsultationStage(
+      [
+        {
+          ...allowed,
+          ...payload
+        } as Student
+      ],
+      session?.username ?? null,
+      timestamp
+    );
+  }
   await logAudit({
     action: "Student Updated",
     table_name: "students",
@@ -2270,6 +2502,20 @@ export async function sendEmailFromCrm(input: {
   subject: string;
   body: string;
 }) {
+  return sendBulkMessageFromCrm({
+    student_ids: input.student_ids,
+    channel: "email",
+    subject: input.subject,
+    message: input.body
+  });
+}
+
+export async function sendBulkMessageFromCrm(input: {
+  student_ids: string[];
+  channel: "email" | "whatsapp" | "sms";
+  message: string;
+  subject?: string;
+}) {
   const session = await getCurrentSession();
   const students = await getStudents();
   const selected = students.filter((student) => input.student_ids.includes(student.id));
@@ -2278,74 +2524,103 @@ export async function sendEmailFromCrm(input: {
     throw new Error("Please select at least one student.");
   }
 
-  for (const student of selected) {
+  const recipients = selected.map((student) => {
+    const personalizedMessage = input.message
+      .replace(/\{name\}/g, student.full_name)
+      .replace(/\{country\}/g, student.country_interest ?? "your study destination");
+    const personalizedSubject = (input.subject ?? "CRM Message").replace(/\{name\}/g, student.full_name);
+
+    return {
+      id: student.id,
+      full_name: student.full_name,
+      email: student.email,
+      phone: student.phone,
+      subject: personalizedSubject,
+      message: personalizedMessage,
+      status: "pending" as "pending" | "sent" | "failed",
+      error: null as string | null
+    };
+  });
+
+  if (input.channel === "email") {
+    const resendKey = process.env.RESEND_API_KEY;
+    const emailFrom = process.env.EMAIL_FROM;
+
+    if (!resendKey || !emailFrom) {
+      for (const recipient of recipients) {
+        recipient.status = "pending";
+      }
+    } else {
+      const results = await Promise.allSettled(
+        recipients.map((recipient) =>
+          fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              from: emailFrom,
+              to: recipient.email,
+              subject: recipient.subject,
+              text: recipient.message
+            })
+          })
+        )
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled" && result.value.ok) {
+          recipients[index].status = "sent";
+        } else {
+          recipients[index].status = "failed";
+          recipients[index].error =
+            result.status === "fulfilled" ? `Email provider error (${result.value.status})` : "Request failed";
+        }
+      });
+    }
+  } else {
+    for (const recipient of recipients) {
+      recipient.status = "pending";
+    }
+  }
+
+  for (const recipient of recipients) {
+    const noteType = input.channel === "email" ? "email" : input.channel === "whatsapp" ? "whatsapp" : "general";
+    const prefix = input.channel === "email"
+      ? `Subject: ${recipient.subject}\nChannel: EMAIL\nDelivery: ${recipient.status.toUpperCase()}\n\n`
+      : `Channel: ${input.channel.toUpperCase()}\nDelivery: ${recipient.status.toUpperCase()}\n\n`;
+
     await createFollowUpLog({
-      student_id: student.id,
-      note_type: "email",
+      student_id: recipient.id,
+      note_type: noteType,
       priority: "medium",
-      tags: "email-center,outgoing",
-      note_text: `Subject: ${input.subject}\n\n${input.body}`
-        .replace(/\{name\}/g, student.full_name)
-        .replace(/\{country\}/g, student.country_interest ?? "your study destination")
+      tags: `bulk-message,outgoing,channel:${input.channel},status:${recipient.status}`,
+      note_text: `${prefix}${recipient.message}`
     });
   }
 
   await logAudit({
-    action: "Email Campaign Logged",
+    action: "Bulk Message Campaign",
     table_name: "student_notes",
     record_label: `${selected.length} recipients`,
     new_value: JSON.stringify({
       student_ids: selected.map((student) => student.id),
-      subject: input.subject
+      channel: input.channel,
+      sender: session?.username ?? null,
+      subject: input.subject ?? null
     })
   });
 
-  const recipients = selected.map((student) => ({
-    id: student.id,
-    full_name: student.full_name,
-    email: student.email,
-    subject: input.subject.replace(/\{name\}/g, student.full_name),
-    body: input.body
-      .replace(/\{name\}/g, student.full_name)
-      .replace(/\{country\}/g, student.country_interest ?? "your study destination")
-  }));
-
-  const resendKey = process.env.RESEND_API_KEY;
-  const emailFrom = process.env.EMAIL_FROM;
-
-  if (!resendKey || !emailFrom) {
-    return {
-      deliveryMode: "logged" as const,
-      sentCount: 0,
-      recipients
-    };
-  }
-
-  const results = await Promise.allSettled(
-    recipients.map((recipient) =>
-      fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: emailFrom,
-          to: recipient.email,
-          subject: recipient.subject,
-          text: recipient.body
-        })
-      })
-    )
-  );
-
-  const sentCount = results.filter(
-    (result) => result.status === "fulfilled" && result.value.ok
-  ).length;
+  const sentCount = recipients.filter((recipient) => recipient.status === "sent").length;
+  const failedCount = recipients.filter((recipient) => recipient.status === "failed").length;
+  const pendingCount = recipients.filter((recipient) => recipient.status === "pending").length;
 
   return {
-    deliveryMode: "resend" as const,
+    channel: input.channel,
     sentCount,
+    failedCount,
+    pendingCount,
     recipients
   };
 }
@@ -2360,6 +2635,13 @@ export async function createStudentNote(input: {
   reminder_date?: string | null;
 }) {
   const session = await getCurrentSession();
+  const noteText = input.note_text.trim();
+
+  if (noteText.length < 2) {
+    throw new Error("Interaction notes are required.");
+  }
+
+  const now = new Date().toISOString();
 
   if (!hasSupabaseEnv()) {
     const db = await readDb();
@@ -2368,16 +2650,24 @@ export async function createStudentNote(input: {
       student_id: input.student_id,
       created_by: session?.username ?? null,
       creator_name: session?.full_name ?? "System",
-      note_text: input.note_text,
+      note_text: noteText,
       note_type: input.note_type ?? "general",
       priority: input.priority ?? "medium",
       is_private: input.is_private ?? false,
       tags: input.tags ?? null,
       reminder_date: input.reminder_date ?? null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      created_at: now,
+      updated_at: now
     };
     db.student_notes.unshift(note);
+    db.students = db.students.map((student) =>
+      student.id === input.student_id
+        ? {
+            ...student,
+            updated_at: now
+          }
+        : student
+    );
     await writeLocalDb(db);
     await logAudit({
       action: "Student Note Added",
@@ -2396,7 +2686,7 @@ export async function createStudentNote(input: {
       student_id: input.student_id,
       created_by: session?.username ?? null,
       creator_name: session?.full_name ?? "System",
-      note_text: input.note_text,
+      note_text: noteText,
       note_type: input.note_type ?? "general",
       priority: input.priority ?? "medium",
       is_private: input.is_private ?? false,
@@ -2406,6 +2696,11 @@ export async function createStudentNote(input: {
     .select("*")
     .single();
   if (error) throw error;
+  const { error: studentUpdateError } = await supabase
+    .from("students")
+    .update({ updated_at: now })
+    .eq("id", input.student_id);
+  if (studentUpdateError) throw studentUpdateError;
   await logAudit({
     action: "Student Note Added",
     table_name: "student_notes",
@@ -2461,6 +2756,146 @@ export async function deleteStudentNote(id: string) {
   const supabase = admin();
   const { error } = await supabase.from("student_notes").delete().eq("id", id);
   if (error) throw error;
+}
+
+const highIntentPattern = /\b(pricing|price|cost|fee|application steps?|next steps?|book(ed|ing)?|schedule|consultation|visa|deposit|payment|enroll|intake)\b/i;
+const responsePattern = /\b(reply|replied|responded|response|interested|question|asked|request(ed|ing)?)\b/i;
+const engagementPattern = /\b(click|open(ed)?|interest|question|request(ed|ing)?|details|information|follow[\s-]?up)\b/i;
+
+function includesPattern(value: string | null | undefined, pattern: RegExp) {
+  if (!value) return false;
+  return pattern.test(value);
+}
+
+function pickMostRecent(a: string | null, b: string | null) {
+  if (!a) return b;
+  if (!b) return a;
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b;
+}
+
+export async function getLeadTemperatureSnapshots() {
+  const [students, notes, consultations, documents, payments, portalMessages] = await Promise.all([
+    getStudents(),
+    getAllStudentNotes(),
+    getConsultations(),
+    getDocuments(),
+    getPayments(),
+    getPortalMessages()
+  ]);
+
+  return students.map((student) => {
+    const studentNotes = notes.filter((note) => note.student_id === student.id);
+    const studentConsultations = consultations.filter((consultation) => consultation.student_id === student.id);
+    const studentDocuments = documents.filter((document) => document.student_id === student.id);
+    const studentPayments = payments.filter((payment) => payment.student_id === student.id);
+    const studentPortalMessages = portalMessages.filter((message) => message.student_id === student.id);
+
+    let lastInteractionAt: string | null = student.updated_at ?? null;
+    let contactCount = 0;
+    let responseCount = 0;
+    let engagementCount = 0;
+    let highIntentCount = 0;
+    let touchpointCount = 0;
+
+    for (const note of studentNotes) {
+      lastInteractionAt = pickMostRecent(lastInteractionAt, note.created_at);
+      const isContactType =
+        note.note_type === "call" ||
+        note.note_type === "email" ||
+        note.note_type === "whatsapp" ||
+        note.note_type === "meeting";
+      const isResponse =
+        includesPattern(note.tags, /incoming|reply|response/i) ||
+        includesPattern(note.note_text, responsePattern);
+      const isEngagement = isResponse || includesPattern(note.note_text, engagementPattern);
+      const isHighIntent =
+        includesPattern(note.note_text, highIntentPattern) ||
+        includesPattern(note.tags, /high-intent|pricing|application|booking/i);
+
+      if (isContactType) contactCount += 1;
+      if (isResponse) responseCount += 1;
+      if (isEngagement) engagementCount += 1;
+      if (isHighIntent) highIntentCount += 1;
+      if (isContactType || isResponse || isEngagement || isHighIntent) touchpointCount += 1;
+    }
+
+    for (const consultation of studentConsultations) {
+      lastInteractionAt = pickMostRecent(lastInteractionAt, consultation.scheduled_at);
+      contactCount += 1;
+      touchpointCount += 1;
+      if (consultation.status === "confirmed" || consultation.status === "completed") {
+        responseCount += 1;
+        engagementCount += 1;
+        highIntentCount += 1;
+      } else if (consultation.status === "pending") {
+        engagementCount += 1;
+      }
+    }
+
+    for (const document of studentDocuments) {
+      lastInteractionAt = pickMostRecent(lastInteractionAt, document.reviewed_at ?? document.uploaded_at);
+      engagementCount += 1;
+      touchpointCount += 1;
+      if (document.status === "uploaded" || document.status === "verified") {
+        highIntentCount += 1;
+      }
+    }
+
+    for (const payment of studentPayments) {
+      lastInteractionAt = pickMostRecent(lastInteractionAt, payment.paid_at ?? payment.created_at);
+      engagementCount += 1;
+      touchpointCount += 1;
+      if (payment.status === "paid" || payment.status === "partial") {
+        responseCount += 1;
+        highIntentCount += 1;
+      }
+    }
+
+    for (const message of studentPortalMessages) {
+      lastInteractionAt = pickMostRecent(lastInteractionAt, message.created_at);
+      touchpointCount += 1;
+
+      if (message.direction === "crm_to_student") {
+        contactCount += 1;
+      } else {
+        responseCount += 1;
+        engagementCount += 1;
+        if (includesPattern(`${message.subject} ${message.message}`, highIntentPattern)) {
+          highIntentCount += 1;
+        }
+      }
+    }
+
+    const followUpCount = Math.max(0, touchpointCount - 1);
+    const result = classifyLeadTemperature({
+      contactCount,
+      responseCount,
+      engagementCount,
+      followUpCount,
+      highIntentCount,
+      lastInteractionAt
+    });
+
+    return {
+      studentId: student.id,
+      score: result.score,
+      status: result.status,
+      label: result.label,
+      colorName: result.colorName,
+      daysSinceLastActivity: result.daysSinceLastActivity,
+      contactCount,
+      responseCount,
+      engagementCount,
+      followUpCount,
+      highIntentCount,
+      lastInteractionAt
+    } satisfies LeadTemperatureSnapshot;
+  });
+}
+
+export async function getLeadTemperatureSnapshotByStudentId(studentId: string) {
+  const snapshots = await getLeadTemperatureSnapshots();
+  return snapshots.find((snapshot) => snapshot.studentId === studentId) ?? null;
 }
 
 export async function getStudentActivityTimeline(studentId: string) {

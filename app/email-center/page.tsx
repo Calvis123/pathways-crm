@@ -7,13 +7,24 @@ export default async function EmailCenterPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const resolvedSearchParams = (await searchParams) ?? {};
-  const initialStudentId = Array.isArray(resolvedSearchParams.student)
+  const singleStudent = Array.isArray(resolvedSearchParams.student)
     ? resolvedSearchParams.student[0] ?? null
     : resolvedSearchParams.student ?? null;
+  const studentsParam = Array.isArray(resolvedSearchParams.students)
+    ? resolvedSearchParams.students[0] ?? ""
+    : resolvedSearchParams.students ?? "";
+  const initialStudentIds = [
+    ...new Set(
+      [singleStudent, ...studentsParam.split(",")]
+        .filter(Boolean)
+        .map((value) => String(value).trim())
+        .filter((value) => value.length > 0)
+    )
+  ];
   const [students, templates, emailLogs] = await Promise.all([
     getStudents(),
     getEmailTemplates(),
-    getCommunicationLogs({ noteTypes: ["email"], limit: 24 })
+    getCommunicationLogs({ limit: 48 })
   ]);
 
   return (
@@ -29,7 +40,7 @@ export default async function EmailCenterPage({
         }))}
       templates={templates}
       logs={emailLogs}
-      initialStudentId={initialStudentId}
+      initialStudentIds={initialStudentIds}
     />
   );
 }

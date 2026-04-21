@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { getSegmentMeta, segmentMeta, stageLabels } from "@/lib/constants";
+import { getSegmentMeta, stageLabels } from "@/lib/constants";
 import type { SegmentKey, SegmentSummary, Student } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
+import { IonIcon } from "@/components/ui/ion-icon";
 
 type SegmentFilter = SegmentKey | "all";
 
@@ -183,7 +184,7 @@ export function SegmentsTable({
                       className="inline-flex h-12 w-12 items-center justify-center rounded-2xl text-xl"
                       style={{ backgroundColor: `${meta.color}20`, color: meta.color }}
                     >
-                      {meta.icon}
+                      <IonIcon icon={meta.icon} className="h-6 w-6" />
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-semibold text-ink dark:text-white">{summary?.count ?? 0}</p>
@@ -230,7 +231,10 @@ export function SegmentsTable({
                       : undefined
                   }
                 >
-                  {meta.icon} {meta.label}
+                  <span className="inline-flex items-center gap-2">
+                    <IonIcon icon={meta.icon} className="h-4 w-4" />
+                    <span>{meta.label}</span>
+                  </span>
                 </Link>
               );
             })}
@@ -275,7 +279,7 @@ export function SegmentsTable({
                     <div>
                       <p className="font-semibold text-ink">{student.full_name}</p>
                       <p className="mt-1 text-sm text-slate-500">
-                        {student.email} {student.phone ? `• ${student.phone}` : ""}
+                        {student.email} {student.phone ? `| ${student.phone}` : ""}
                       </p>
                     </div>
 
@@ -284,7 +288,7 @@ export function SegmentsTable({
                         className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white"
                         style={{ backgroundColor: meta.color }}
                       >
-                        <span>{meta.icon}</span>
+                        <IonIcon icon={meta.icon} className="h-3.5 w-3.5" />
                         <span>{meta.label}</span>
                       </span>
                     </div>
@@ -366,7 +370,7 @@ export function SegmentsTable({
                 >
                   {segmentOrder.map((segment) => (
                     <option key={segment} value={segment}>
-                      {getSegmentMeta(segment).icon} {getSegmentMeta(segment).label} - {getSegmentMeta(segment).description}
+                      {getSegmentMeta(segment).label} - {getSegmentMeta(segment).description}
                     </option>
                   ))}
                 </select>
@@ -435,7 +439,7 @@ export function SegmentsTable({
                 >
                   {segmentOrder.map((segment) => (
                     <option key={segment} value={segment}>
-                      {getSegmentMeta(segment).icon} {getSegmentMeta(segment).label}
+                      {getSegmentMeta(segment).label}
                     </option>
                   ))}
                 </select>
@@ -473,3 +477,4 @@ export function SegmentsTable({
     </div>
   );
 }
+

@@ -2,12 +2,25 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  airplaneOutline,
+  attachOutline,
+  bookOutline,
+  businessOutline,
+  cashOutline,
+  cubeOutline,
+  flashOutline,
+  globeOutline,
+  laptopOutline,
+  megaphoneOutline
+} from "ionicons/icons";
+import { IonIcon } from "@/components/ui/ion-icon";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { ExpenseCategory, ExpensePaymentMethod, ExpenseRecord } from "@/lib/types";
 
 type TabKey = "cashflow" | "credit" | "expenses" | "reminders";
 
-const expenseCategories: Record<ExpenseCategory, string> = {
+const legacyExpenseCategories: Record<ExpenseCategory, string> = {
   rent: "🏢 Rent & Office",
   salaries: "💰 Salaries & Wages",
   marketing: "📢 Marketing & Ads",
@@ -18,6 +31,19 @@ const expenseCategories: Record<ExpenseCategory, string> = {
   internet: "🌐 Internet & Phone",
   software: "💻 Software & Subscriptions",
   other: "📦 Other"
+};
+
+const expenseCategories: Record<ExpenseCategory, { label: string; icon: string }> = {
+  rent: { label: "Rent & Office", icon: businessOutline },
+  salaries: { label: "Salaries & Wages", icon: cashOutline },
+  marketing: { label: "Marketing & Ads", icon: megaphoneOutline },
+  utilities: { label: "Utilities", icon: flashOutline },
+  office_supplies: { label: "Office Supplies", icon: attachOutline },
+  travel: { label: "Travel & Transport", icon: airplaneOutline },
+  training: { label: "Training & Development", icon: bookOutline },
+  internet: { label: "Internet & Phone", icon: globeOutline },
+  software: { label: "Software & Subscriptions", icon: laptopOutline },
+  other: { label: "Other", icon: cubeOutline }
 };
 
 const paymentMethodOptions: ExpensePaymentMethod[] = ["cash", "mpesa", "bank", "card"];
@@ -323,7 +349,7 @@ export function FinancialToolsManager({
                   >
                     {Object.entries(expenseCategories).map(([key, label]) => (
                       <option key={key} value={key}>
-                        {label}
+                        {label.label}
                       </option>
                     ))}
                   </select>
@@ -405,7 +431,10 @@ export function FinancialToolsManager({
                   expensesByCategory.map((item) => (
                     <div key={item.category} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <p className="text-xl font-semibold text-ink">{formatCurrency(item.amount)}</p>
-                      <p className="mt-1 text-sm text-slate-500">{expenseCategories[item.category]}</p>
+                      <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+                        <IonIcon icon={expenseCategories[item.category].icon} className="h-4 w-4" />
+                        {expenseCategories[item.category].label}
+                      </p>
                     </div>
                   ))
                 )}
@@ -435,8 +464,9 @@ export function FinancialToolsManager({
                       <tr key={expense.id} className="border-b border-slate-100 hover:bg-gold/5">
                         <td className="px-4 py-3">{formatDate(expense.expense_date)}</td>
                         <td className="px-4 py-3">
-                          <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
-                            {expenseCategories[expense.category]}
+                          <span className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
+                            <IonIcon icon={expenseCategories[expense.category].icon} className="h-3.5 w-3.5" />
+                            {expenseCategories[expense.category].label}
                           </span>
                         </td>
                         <td className="px-4 py-3">{expense.description ?? "-"}</td>

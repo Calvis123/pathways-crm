@@ -119,34 +119,59 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
     router.refresh();
   }
 
+  function openBroadcastComposer() {
+    if (selectedIds.length === 0) {
+      setStatus("Select at least one student first.");
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("students", selectedIds.join(","));
+    router.push(`/email-center?${params.toString()}`);
+  }
+
   return (
-    <Card className="dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(15,23,42,0.94))]">
+    <Card className="border-slate-200/80 bg-white/95 shadow-lg shadow-slate-200/40 backdrop-blur dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(15,23,42,0.94))] dark:shadow-none">
       <CardHeader
         title="Students & Leads"
         description="Role-aware CRM view with bulk stage, payment, export, and delete operations."
+        action={
+          <div className="flex items-center gap-2">
+            <Badge className="bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-white/[0.08] dark:text-slate-100 dark:ring-white/10">
+              {filteredStudents.length} shown
+            </Badge>
+            {selectedIds.length > 0 ? (
+              <Badge className="bg-gold/20 text-ink ring-1 ring-gold/40 dark:bg-gold/25 dark:text-white dark:ring-gold/40">
+                {selectedIds.length} selected
+              </Badge>
+            ) : null}
+          </div>
+        }
       />
-      <div className="px-4 pb-2">
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
         <Link
           href="/students/new"
-          className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-2.5 text-sm font-semibold text-white dark:bg-[#ff7a59] dark:hover:bg-[#ef6b49]"
+          className="inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 dark:bg-[#ff7a59] dark:hover:bg-[#ef6b49]"
         >
           Add Student
         </Link>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Tip: Select leads first, then run bulk actions.</p>
       </div>
-      <div className="mb-4 grid gap-3 px-4 md:grid-cols-[1.2fr_0.8fr]">
+
+      <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03] md:grid-cols-[1.2fr_0.8fr]">
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search by name, email, phone, country, or stage"
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none ring-gold/30 focus:ring-2 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none ring-gold/30 transition focus:ring-2 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400"
         />
 
         {manager ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <select
               value={bulkStage}
               onChange={(event) => setBulkStage(event.target.value as StudentStage)}
-              className="rounded-2xl border border-slate-200 px-3 py-3 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
             >
               {stageChoices.map((stage) => (
                 <option key={stage} value={stage}>
@@ -162,13 +187,13 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
       </div>
 
       {manager ? (
-        <div className="mb-4 flex flex-wrap items-center gap-2 px-4">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
           <select
             value={bulkPayment}
             onChange={(event) =>
               setBulkPayment(event.target.value as "full" | "partial" | "none")
             }
-            className="rounded-2xl border border-slate-200 px-3 py-3 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
           >
             <option value="partial">Partial Payment</option>
             <option value="full">Full Payment</option>
@@ -180,6 +205,9 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
           <Button type="button" variant="secondary" onClick={() => runBulkAction("export")}>
             Export CSV
           </Button>
+          <Button type="button" variant="secondary" onClick={openBroadcastComposer}>
+            Broadcast Message
+          </Button>
           {role === "admin" ? (
             <Button
               type="button"
@@ -189,13 +217,13 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
               Delete
             </Button>
           ) : null}
-          {status ? <p className="text-sm text-slate-500 dark:text-slate-300">{status}</p> : null}
+          {status ? <p className="ml-auto text-sm font-medium text-slate-600 dark:text-slate-300">{status}</p> : null}
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/80 dark:border-white/10 dark:bg-white/[0.02]">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-100 text-slate-500 dark:border-white/10 dark:text-slate-400">
+          <thead className="border-b border-slate-200 bg-slate-50/80 text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
             <tr>
               {manager ? (
                 <th className="px-4 py-3 font-medium">
@@ -214,7 +242,9 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
             {filteredStudents.map((student) => (
               <tr
                 key={student.id}
-                className="border-b border-slate-50 transition hover:bg-slate-50/80 dark:border-white/10 dark:hover:bg-white/[0.04]"
+                className={`border-b border-slate-100 transition hover:bg-slate-50/80 dark:border-white/10 dark:hover:bg-white/[0.04] ${
+                  selectedIds.includes(student.id) ? "bg-gold/10 dark:bg-gold/10" : ""
+                }`}
               >
                 {manager ? (
                   <td className="px-4 py-4">
@@ -245,7 +275,9 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
                   </div>
                 </td>
                 <td className="px-4 py-4">
-                  <Badge className="bg-slate-100 text-slate-700 dark:bg-white/[0.08] dark:text-slate-200">{stageLabels[student.stage]}</Badge>
+                  <Badge className="bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-white/[0.08] dark:text-slate-200 dark:ring-white/10">
+                    {stageLabels[student.stage]}
+                  </Badge>
                 </td>
                 <td className="px-4 py-4 dark:text-slate-200">{student.country_interest ?? "N/A"}</td>
                 <td className="px-4 py-4">
@@ -261,6 +293,13 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
                 <td className="px-4 py-4 dark:text-slate-300">{formatDate(student.updated_at)}</td>
               </tr>
             ))}
+            {filteredStudents.length === 0 ? (
+              <tr>
+                <td colSpan={manager ? 7 : 6} className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                  No students match your search.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

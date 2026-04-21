@@ -15,11 +15,13 @@ export function BrandLogo({
       <Image
         src="/barak-pathways-logo.png"
         alt="Barak Pathways"
-        width={220}
-        height={62}
+        width={560}
+        height={421}
         priority={priority}
-        unoptimized
-        className={cn("block h-auto w-[148px] rounded-md bg-transparent object-contain", imageClassName)}
+        className={cn(
+          "block h-auto w-[112px] bg-transparent object-contain drop-shadow-[0_8px_18px_rgba(15,23,42,0.12)] dark:drop-shadow-[0_10px_22px_rgba(2,6,23,0.35)]",
+          imageClassName
+        )}
       />
     </div>
   );

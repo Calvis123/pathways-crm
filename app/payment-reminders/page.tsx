@@ -1,4 +1,10 @@
 import { PaymentRemindersManager } from "@/components/tables/payment-reminders-manager";
+import {
+  alertCircleOutline,
+  checkmarkCircleOutline,
+  timeOutline,
+  warningOutline
+} from "ionicons/icons";
 import { getStudents } from "@/lib/data";
 
 function daysBetween(a: number, b: number) {
@@ -86,7 +92,19 @@ export default async function PaymentRemindersPage() {
       icon: "🟢",
       students: overdueStudents.filter((student) => student.reminder_category === "current")
     }
-  ].filter((category) => category.students.length > 0);
+  ]
+    .filter((category) => category.students.length > 0)
+    .map((category) => ({
+      ...category,
+      icon:
+        category.key === "critical"
+          ? warningOutline
+          : category.key === "warning"
+            ? alertCircleOutline
+            : category.key === "upcoming"
+              ? timeOutline
+              : checkmarkCircleOutline
+    }));
 
   const totalOutstanding = overdueStudents.reduce((sum, student) => sum + student.balance, 0);
   const criticalCount = overdueStudents.filter((student) => student.reminder_category === "critical").length;

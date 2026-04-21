@@ -9,8 +9,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: "Barak Pathways CRM",
-  description: "A modern admissions, IELTS, finance, and operations CRM for Barak Pathways."
+  description: "A modern admissions, IELTS, finance, and operations CRM for Barak Pathways.",
+  icons: {
+    icon: [{ url: "/barak-pathways-logo.png" }],
+    shortcut: ["/barak-pathways-logo.png"],
+    apple: ["/barak-pathways-logo.png"]
+  },
+  openGraph: {
+    images: ["/barak-pathways-logo.png"]
+  },
+  twitter: {
+    images: ["/barak-pathways-logo.png"]
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

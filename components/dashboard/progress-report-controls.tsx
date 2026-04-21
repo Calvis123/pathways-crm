@@ -115,7 +115,7 @@ export function ProgressReportControls({
             >
               {stages.map((stage) => (
                 <option key={stage.key} value={stage.key}>
-                  {stage.icon} {stage.name}
+                  {stage.name}
                 </option>
               ))}
             </select>

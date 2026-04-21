@@ -1,16 +1,25 @@
 import Link from "next/link";
+import { airplaneOutline, chatbubbleEllipsesOutline, documentTextOutline, personOutline } from "ionicons/icons";
 import { ProgressReportControls } from "@/components/dashboard/progress-report-controls";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { Card, CardHeader } from "@/components/ui/card";
+import { IonIcon } from "@/components/ui/ion-icon";
 import { getStudentById, getStudentNotes, getStudents } from "@/lib/data";
 import type { Student, StudentStage } from "@/lib/types";
 import { formatCurrency, formatDate, normalizeKenyanPhone } from "@/lib/utils";
 
-const reportStages: Array<{ key: StudentStage; name: string; icon: string; color: string }> = [
+const legacyReportStages: Array<{ key: StudentStage; name: string; icon: string; color: string }> = [
   { key: "lead", name: "Lead", icon: "👤", color: "#6B7280" },
   { key: "consultation", name: "Consultation", icon: "💬", color: "#3B82F6" },
   { key: "application", name: "Application", icon: "📝", color: "#8B5CF6" },
   { key: "visa", name: "Visa", icon: "✈️", color: "#EC4899" }
+];
+
+const reportStages: Array<{ key: StudentStage; name: string; icon: string; color: string }> = [
+  { key: "lead", name: "Lead", icon: personOutline, color: "#6B7280" },
+  { key: "consultation", name: "Consultation", icon: chatbubbleEllipsesOutline, color: "#3B82F6" },
+  { key: "application", name: "Application", icon: documentTextOutline, color: "#8B5CF6" },
+  { key: "visa", name: "Visa", icon: airplaneOutline, color: "#EC4899" }
 ];
 
 type ViewMode = "list" | "bulk" | "individual";
@@ -411,7 +420,8 @@ export default async function ProgressReportsPage({
                               className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
                               style={{ backgroundColor: `${selectedStageMeta.color}20`, color: selectedStageMeta.color }}
                             >
-                              {selectedStageMeta.icon} {student.stage}
+                              <IonIcon icon={selectedStageMeta.icon} className="h-3.5 w-3.5" />
+                              {student.stage}
                             </span>
                           </td>
                           <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{student.country_interest ?? "-"}</td>

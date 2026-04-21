@@ -27,19 +27,18 @@ export function SessionTabGuard({
 
     let cancelled = false;
 
-    async function logoutAndRedirect() {
-      try {
-        await fetch("/api/session/logout", { method: "POST" });
-      } catch {
+    function logoutAndRedirect() {
+      // Do not block navigation on this request; dev compilation/network lag can make it slow.
+      void fetch("/api/session/logout", { method: "POST" }).catch(() => {
         // Ignore network issues and continue redirecting to force a fresh login.
-      }
+      });
 
       if (cancelled) return;
       const next = pathname && pathname !== "/" ? `?next=${encodeURIComponent(pathname)}` : "";
       router.replace(`/login${next}` as Route);
     }
 
-    void logoutAndRedirect();
+    logoutAndRedirect();
 
     return () => {
       cancelled = true;
