@@ -884,7 +884,7 @@ export async function createStudent(input: Partial<Student>) {
       location: input.location ?? null,
       country_interest: input.country_interest ?? null,
       program_level: input.program_level ?? null,
-      university_name: null,
+      university_name: input.university_name ?? null,
       stage: (input.stage ?? "lead") as StudentStage,
       consultation_requested: input.consultation_requested ?? false,
       consultation_status: null,
@@ -893,9 +893,9 @@ export async function createStudent(input: Partial<Student>) {
       ielts_enrolled: input.ielts_enrolled ?? false,
       ielts_amount: input.ielts_amount ?? 0,
       ielts_payment_status: input.ielts_payment_status ?? "unpaid",
-      payment_status: "pending",
-      consultation_upfront_paid: 0,
-      consultation_balance_paid: 0,
+      payment_status: input.payment_status ?? "pending",
+      consultation_upfront_paid: input.consultation_upfront_paid ?? 0,
+      consultation_balance_paid: input.consultation_balance_paid ?? 0,
       segment: "needs_guidance",
       segment_score: 20,
       lead_source: input.lead_source ?? "Website",
@@ -919,6 +919,7 @@ export async function createStudent(input: Partial<Student>) {
     location: input.location ?? null,
     country_interest: input.country_interest ?? null,
     program_level: input.program_level ?? null,
+    university_name: input.university_name ?? null,
     stage: (input.stage ?? "lead") as StudentStage,
     consultation_requested: input.consultation_requested ?? false,
     consultation_status: input.consultation_status ?? null,
@@ -1118,6 +1119,74 @@ export async function createPublicIeltsLead(input: {
       target_score: input.target_score ?? null,
       source: input.source ?? "facebook_ielts",
       campaign: input.campaign ?? null
+    })
+  });
+
+  return student;
+}
+
+export async function createPublicStudentRegistration(input: {
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  passport_number?: string | null;
+  location?: string | null;
+  country_interest?: string | null;
+  program_level?: string | null;
+  university_name?: string | null;
+  stage?: StudentStage;
+  payment_status?: string | null;
+  ielts_enrolled?: boolean;
+  ielts_amount?: number;
+  ielts_payment_status?: "paid" | "unpaid";
+  consultation_upfront_paid?: number;
+  consultation_balance_paid?: number;
+  notes?: string | null;
+  lead_source?: string | null;
+  referral_code?: string | null;
+  source?: string | null;
+  campaign?: string | null;
+}) {
+  const notes = [
+    input.notes ?? null,
+    input.source ? `Source: ${input.source}` : null,
+    input.campaign ? `Campaign: ${input.campaign}` : null
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  const student = await createStudent({
+    full_name: input.full_name,
+    email: input.email,
+    phone: input.phone ?? null,
+    passport_number: input.passport_number ?? null,
+    location: input.location ?? null,
+    country_interest: input.country_interest ?? null,
+    program_level: input.program_level ?? null,
+    university_name: input.university_name ?? null,
+    stage: input.stage ?? "lead",
+    payment_status: input.payment_status ?? "pending",
+    ielts_enrolled: input.ielts_enrolled ?? false,
+    ielts_amount: input.ielts_amount ?? 0,
+    ielts_payment_status: input.ielts_payment_status ?? "unpaid",
+    consultation_upfront_paid: input.consultation_upfront_paid ?? 0,
+    consultation_balance_paid: input.consultation_balance_paid ?? 0,
+    lead_source: input.lead_source ?? input.source ?? "Website",
+    referral_code: input.referral_code ?? null,
+    notes: notes || "Public student registration",
+    created_by: null
+  });
+
+  await logAudit({
+    action: "Public Student Registration Captured",
+    table_name: "students",
+    related_id: student.id,
+    record_label: student.full_name,
+    new_value: JSON.stringify({
+      source: input.source ?? null,
+      campaign: input.campaign ?? null,
+      lead_source: input.lead_source ?? input.source ?? "Website",
+      stage: input.stage ?? "lead"
     })
   });
 
@@ -1458,8 +1527,8 @@ export async function updateStudent(id: string, input: Partial<Student>) {
     throw new Error("Student not found or access denied.");
   }
 
-  if (session?.role === "employee") {
-    throw new Error("Employees have read-only student access.");
+  if (!session || !canManageStudentRecords(session.role)) {
+    throw new Error("You do not have permission to update students.");
   }
 
   if (!hasSupabaseEnv()) {

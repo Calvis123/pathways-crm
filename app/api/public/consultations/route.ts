@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createPublicConsultationLead } from "@/lib/data";
+import { jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
 import { normalizeKenyanPhone } from "@/lib/utils";
 
 const schema = z.object({
@@ -22,7 +22,8 @@ export async function POST(request: Request) {
     const phone = normalizeKenyanPhone(payload.phone);
 
     if (!phone) {
-      return NextResponse.json(
+      return jsonWithPublicCors(
+        request,
         { error: "Please enter a valid Kenyan phone number." },
         { status: 400 }
       );
@@ -33,16 +34,21 @@ export async function POST(request: Request) {
       phone
     });
 
-    return NextResponse.json({
+    return jsonWithPublicCors(request, {
       ok: true,
       studentId: student.id,
       calendlyUrl: "https://calendly.com/barakpathways/30min",
       whatsappUrl: "https://wa.me/254113043315"
     });
   } catch (error) {
-    return NextResponse.json(
+    return jsonWithPublicCors(
+      request,
       { error: error instanceof Error ? error.message : "Unknown error." },
       { status: 400 }
     );
   }
+}
+
+export async function OPTIONS(request: Request) {
+  return optionsWithPublicCors(request);
 }

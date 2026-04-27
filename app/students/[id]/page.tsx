@@ -18,6 +18,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     getLeadTemperatureSnapshotByStudentId(id),
     getStudentActivityTimeline(id)
   ]);
+  const canEditStudent = session?.role === "admin" || session?.role === "consultant" || session?.role === "employee";
 
   const temperatureTone =
     temperature?.status === "hot"
@@ -85,7 +86,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
       </Card>
-      <StudentEditor initial={student} readOnly={session?.role === "employee"} />
+      <StudentEditor initial={student} readOnly={!canEditStudent} />
     </div>
   );
 }
