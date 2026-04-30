@@ -7,6 +7,7 @@ import type { AppRole, AppUserRecord } from "@/lib/types";
 const roleLabels: Record<AppUserRecord["role"], string> = {
   employee: "Super Admin",
   admin: "Admin",
+  hr: "HR",
   operations: "Operations",
   marketing: "Marketing",
   consultant: "Consultant",
@@ -16,6 +17,7 @@ const roleLabels: Record<AppUserRecord["role"], string> = {
 const roleDescriptions: Record<AppUserRecord["role"], string> = {
   employee: "Full control",
   admin: "Finance and administration",
+  hr: "System oversight",
   operations: "Documents and process",
   marketing: "Leads and campaigns",
   consultant: "Student support",
@@ -25,6 +27,7 @@ const roleDescriptions: Record<AppUserRecord["role"], string> = {
 const roleBadgeTone: Record<AppUserRecord["role"], string> = {
   employee: "bg-[#0f172a] text-gold",
   admin: "bg-sky-500 text-white",
+  hr: "bg-teal-500 text-white",
   operations: "bg-emerald-500 text-white",
   marketing: "bg-amber-500 text-white",
   consultant: "bg-violet-500 text-white",
@@ -34,6 +37,7 @@ const roleBadgeTone: Record<AppUserRecord["role"], string> = {
 const allRoles: AppUserRecord["role"][] = [
   "employee",
   "admin",
+  "hr",
   "operations",
   "marketing",
   "consultant",
@@ -406,6 +410,7 @@ function RoleField() {
         </option>
         <option value="employee">Super Admin (Owner)</option>
         <option value="admin">Admin</option>
+        <option value="hr">HR</option>
         <option value="operations">Operations</option>
         <option value="marketing">Marketing</option>
         <option value="consultant">Consultant</option>

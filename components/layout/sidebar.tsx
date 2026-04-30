@@ -18,6 +18,7 @@ import {
   Folder,
   Funnel,
   GraduationCap,
+  IdCard,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -52,6 +53,15 @@ const sections: Array<{ title: string; items: Item[] }> = [
       { href: "/students", label: "Students", icon: Users2 },
       { href: "/sales-funnel", label: "Sales Funnel", icon: Funnel },
       { href: "/consultations", label: "Consultations", icon: CalendarCheck }
+    ]
+  },
+  {
+    title: "HR",
+    items: [
+      { href: "/hr-dashboard", label: "HR Overview", icon: IdCard },
+      { href: "/hr-dashboard/team", label: "Team & Roles", icon: Users2 },
+      { href: "/hr-dashboard/operations", label: "Operations Oversight", icon: ListChecks },
+      { href: "/hr-dashboard/activity", label: "Activity & Compliance", icon: Activity }
     ]
   },
   {
@@ -119,6 +129,15 @@ function normalizePath(pathname: string) {
   return pathname;
 }
 
+const hrVisibleSections = new Set([
+  "HR",
+  "Main",
+  "Pipeline",
+  "IELTS",
+  "Reports & Analytics",
+  "Communications"
+]);
+
 export function Sidebar({
   pathname,
   user,
@@ -155,7 +174,7 @@ export function Sidebar({
   const visibleSections = useMemo(
     () =>
       user
-        ? sections
+        ? (user.role === "hr" ? sections.filter((section) => hrVisibleSections.has(section.title)) : sections)
             .map((section) => ({
               ...section,
               items: section.items.filter((item) => hasRouteAccess(item.href, user.role))

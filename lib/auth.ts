@@ -27,6 +27,7 @@ export interface DemoUser extends SessionUser {
 
 export const demoUsers: DemoUser[] = [
   { username: "admin", email: "admin@barakpathways.com", password: "barak123", full_name: "Amina Admin", role: "admin" },
+  { username: "hr", email: "hr@barakpathways.com", password: "barak123", full_name: "Hannah HR", role: "hr" },
   { username: "consultant", email: "consultant@barakpathways.com", password: "barak123", full_name: "Caleb Consultant", role: "consultant" },
   { username: "marketing", email: "marketing@barakpathways.com", password: "barak123", full_name: "Maya Marketing", role: "marketing" },
   { username: "operations", email: "operations@barakpathways.com", password: "barak123", full_name: "Oscar Operations", role: "operations" },

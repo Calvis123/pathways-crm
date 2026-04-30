@@ -339,7 +339,19 @@ export const mockUsers: AppUserRecord[] = [
     created_at: "2026-01-10T08:00:00.000Z"
   },
   {
-    id: "10000000-0000-0000-0000-000000000002",
+    id: "10000000-0000-0000-0000-000000000200",
+    username: "hr",
+    password: "barak123",
+    full_name: "Hannah HR",
+    email: "hr@barakpathways.com",
+    role: "hr",
+    status: "active",
+    phone: "+254700222200",
+    last_login_at: null,
+    created_at: "2026-01-10T08:00:00.000Z"
+  },
+  {
+    id: "10000000-0000-0000-0000-000000000003",
     username: "consultant",
     password: "barak123",
     full_name: "Caleb Consultant",
@@ -351,7 +363,7 @@ export const mockUsers: AppUserRecord[] = [
     created_at: "2026-01-10T08:00:00.000Z"
   },
   {
-    id: "10000000-0000-0000-0000-000000000003",
+    id: "10000000-0000-0000-0000-000000000004",
     username: "operations",
     password: "barak123",
     full_name: "Oscar Operations",
