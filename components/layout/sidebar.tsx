@@ -133,6 +133,7 @@ const hrVisibleSections = new Set([
   "HR",
   "Main",
   "Pipeline",
+  "Finances",
   "IELTS",
   "Reports & Analytics",
   "Communications"

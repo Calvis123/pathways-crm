@@ -17,7 +17,7 @@ import {
 } from "ionicons/icons";
 import { IonIcon } from "@/components/ui/ion-icon";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { ExpenseCategory, ExpensePaymentMethod, ExpenseRecord } from "@/lib/types";
+import type { AppRole, ExpenseCategory, ExpensePaymentMethod, ExpenseRecord } from "@/lib/types";
 
 type TabKey = "cashflow" | "credit" | "expenses" | "invoices" | "receipts" | "reminders";
 type DocumentKind = "invoice" | "receipt";
@@ -66,6 +66,7 @@ export function FinancialToolsManager({
   expenses,
   expensesByCategory,
   currentUsername,
+  currentRole,
   reminderItems
 }: {
   startDate: string;
@@ -92,6 +93,7 @@ export function FinancialToolsManager({
   expenses: ExpenseRecord[];
   expensesByCategory: Array<{ category: ExpenseCategory; amount: number }>;
   currentUsername: string | null;
+  currentRole: AppRole | null;
   reminderItems: Array<{
     id: string;
     full_name: string;
@@ -101,7 +103,8 @@ export function FinancialToolsManager({
   }>;
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>("cashflow");
+  const canViewFullFinancialTools = currentRole === "admin" || currentRole === "employee";
+  const [activeTab, setActiveTab] = useState<TabKey>(canViewFullFinancialTools ? "cashflow" : "invoices");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -357,15 +360,21 @@ export function FinancialToolsManager({
           </div>
 
           <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-white/10">
-            <TabButton active={activeTab === "cashflow"} onClick={() => showTab("cashflow")}>Cash Flow</TabButton>
-            <TabButton active={activeTab === "credit"} onClick={() => showTab("credit")}>Credit Records</TabButton>
-            <TabButton active={activeTab === "expenses"} onClick={() => showTab("expenses")}>Expenses</TabButton>
+            {canViewFullFinancialTools ? (
+              <>
+                <TabButton active={activeTab === "cashflow"} onClick={() => showTab("cashflow")}>Cash Flow</TabButton>
+                <TabButton active={activeTab === "credit"} onClick={() => showTab("credit")}>Credit Records</TabButton>
+                <TabButton active={activeTab === "expenses"} onClick={() => showTab("expenses")}>Expenses</TabButton>
+              </>
+            ) : null}
             <TabButton active={activeTab === "invoices"} onClick={() => showFinanceDocumentTab("invoices")}>Invoices</TabButton>
             <TabButton active={activeTab === "receipts"} onClick={() => showFinanceDocumentTab("receipts")}>Receipts</TabButton>
-            <TabButton active={activeTab === "reminders"} onClick={() => showTab("reminders")}>Payment Reminders</TabButton>
+            {canViewFullFinancialTools ? (
+              <TabButton active={activeTab === "reminders"} onClick={() => showTab("reminders")}>Payment Reminders</TabButton>
+            ) : null}
           </div>
 
-          {activeTab === "cashflow" ? (
+          {canViewFullFinancialTools && activeTab === "cashflow" ? (
             <div className="space-y-6">
               <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 dark:border-white/10 dark:bg-white/[0.04]">
                 <label className="text-sm text-slate-600 dark:text-slate-300">
@@ -424,7 +433,7 @@ export function FinancialToolsManager({
             </div>
           ) : null}
 
-          {activeTab === "credit" ? (
+          {canViewFullFinancialTools && activeTab === "credit" ? (
             <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="min-w-full">
                 <thead className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
@@ -482,7 +491,7 @@ export function FinancialToolsManager({
             </div>
           ) : null}
 
-          {activeTab === "expenses" ? (
+          {canViewFullFinancialTools && activeTab === "expenses" ? (
             <div className="space-y-8">
               <form onSubmit={handleExpenseSubmit} className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-2">
                 <label className="text-sm text-slate-600">
@@ -1005,7 +1014,7 @@ export function FinancialToolsManager({
             </div>
           ) : null}
 
-          {activeTab === "reminders" ? (
+          {canViewFullFinancialTools && activeTab === "reminders" ? (
             <div className="space-y-3">
               {reminderItems.length === 0 ? (
                 <p className="text-sm text-slate-500">No payments due in the next 7 days.</p>

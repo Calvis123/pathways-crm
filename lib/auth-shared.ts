@@ -19,6 +19,7 @@ export interface StudentPortalSession {
 const publicExactPaths = new Set(["/", "/login", "/book-consultation", "/ielts-training", "/student-portal"]);
 const publicPrefixes = ["/api/session/", "/api/public/", "/api/portal/", "/_next/", "/favicon.ico"];
 const publicAssetPattern = /\.[a-z0-9]+$/i;
+const allAppRoles: AppRole[] = ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"];
 
 const routeAccess: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/dashboard", roles: ["admin", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
@@ -27,7 +28,7 @@ const routeAccess: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/payments", roles: ["admin", "consultant", "operations", "employee"] },
   { prefix: "/payment-tracker", roles: ["admin", "employee"] },
   { prefix: "/payment-reminders", roles: ["admin", "consultant", "operations", "employee"] },
-  { prefix: "/financial-tools", roles: ["admin", "employee"] },
+  { prefix: "/financial-tools", roles: allAppRoles },
   { prefix: "/financial-reports", roles: ["admin", "employee"] },
   { prefix: "/students", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
   { prefix: "/sales-funnel", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee"] },
@@ -60,6 +61,7 @@ export const permissionMatrix = [
   { label: "Reports", prefix: "/reports", roles: ["admin", "hr"] },
   { label: "Audit Logs", prefix: "/audit", roles: ["admin"] },
   { label: "Analytics", prefix: "/analytics", roles: ["admin", "hr", "operations", "employee"] },
+  { label: "Financial Tools", prefix: "/financial-tools", roles: allAppRoles },
   { label: "Financial Reports", prefix: "/financial-reports", roles: ["admin", "employee"] },
   { label: "Revenue Forecast", prefix: "/revenue-forecast", roles: ["admin", "hr", "operations", "employee"] },
   { label: "Students", prefix: "/students", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] as AppRole[] },

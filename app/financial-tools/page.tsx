@@ -29,9 +29,36 @@ export default async function FinancialToolsPage({
   const params = await searchParams;
   const startDate = params.start_date ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   const endDate = params.end_date ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10);
+  const session = await getCurrentSession();
+  const canViewFullFinancialTools = session?.role === "admin" || session?.role === "employee";
 
-  const [session, students, payments, expenses] = await Promise.all([
-    getCurrentSession(),
+  if (!canViewFullFinancialTools) {
+    return (
+      <FinancialToolsManager
+        startDate={startDate}
+        endDate={endDate}
+        metrics={{
+          totalCreditExposure: 0,
+          totalOverdue: 0,
+          collectionRate: 0,
+          netProfit: 0,
+          profitMargin: 0,
+          totalIncome: 0,
+          totalExpenses: 0,
+          currentReceivables: 0
+        }}
+        cashFlow={[]}
+        creditRecords={[]}
+        expenses={[]}
+        expensesByCategory={[]}
+        currentUsername={session?.username ?? null}
+        currentRole={session?.role ?? null}
+        reminderItems={[]}
+      />
+    );
+  }
+
+  const [students, payments, expenses] = await Promise.all([
     getStudents(),
     getPayments(),
     getExpenses()
@@ -164,6 +191,7 @@ export default async function FinancialToolsPage({
       expenses={rangedExpenses}
       expensesByCategory={expensesByCategory}
       currentUsername={session?.username ?? null}
+      currentRole={session?.role ?? null}
       reminderItems={reminderItems}
     />
   );
