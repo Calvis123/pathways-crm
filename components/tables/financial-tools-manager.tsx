@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Download, Plus, Printer, Trash2 } from "lucide-react";
 import {
   airplaneOutline,
   attachOutline,
@@ -18,7 +19,15 @@ import { IonIcon } from "@/components/ui/ion-icon";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { ExpenseCategory, ExpensePaymentMethod, ExpenseRecord } from "@/lib/types";
 
-type TabKey = "cashflow" | "credit" | "expenses" | "reminders";
+type TabKey = "cashflow" | "credit" | "expenses" | "invoices" | "receipts" | "reminders";
+type DocumentKind = "invoice" | "receipt";
+
+type DocumentLineItem = {
+  id: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+};
 
 const legacyExpenseCategories: Record<ExpenseCategory, string> = {
   rent: "🏢 Rent & Office",
@@ -106,9 +115,58 @@ export function FinancialToolsManager({
     receipt_number: "",
     vendor: ""
   });
+  const [financeDocument, setFinanceDocument] = useState({
+    kind: "invoice" as DocumentKind,
+    number: `INV-${new Date().getFullYear()}-001`,
+    issueDate: new Date().toISOString().slice(0, 10),
+    dueDate: "",
+    clientName: "",
+    clientEmail: "",
+    clientPhone: "",
+    clientAddress: "",
+    paymentMethod: "M-Pesa",
+    paymentReference: "",
+    taxRate: "0",
+    notes: "Thank you for choosing Barak Pathways. We appreciate your business."
+  });
+  const [lineItems, setLineItems] = useState<DocumentLineItem[]>([
+    {
+      id: "item-1",
+      description: "Consultation service",
+      quantity: "1",
+      unitPrice: "40000"
+    }
+  ]);
+
+  const subtotal = lineItems.reduce((sum, item) => {
+    return sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+  }, 0);
+  const taxAmount = subtotal * ((Number(financeDocument.taxRate) || 0) / 100);
+  const grandTotal = subtotal + taxAmount;
 
   function showTab(tab: TabKey) {
     setActiveTab(tab);
+  }
+
+  function showFinanceDocumentTab(tab: "invoices" | "receipts") {
+    const kind: DocumentKind = tab === "invoices" ? "invoice" : "receipt";
+    const prefix = kind === "invoice" ? "INV" : "REC";
+
+    setActiveTab(tab);
+    setFinanceDocument((current) => ({
+      ...current,
+      kind,
+      number:
+        current.number === "" || current.number.startsWith(kind === "invoice" ? "REC" : "INV")
+          ? `${prefix}-${new Date().getFullYear()}-001`
+          : current.number,
+      notes:
+        current.kind === kind
+          ? current.notes
+          : kind === "invoice"
+            ? "Payment is due by the stated date. Thank you for choosing Barak Pathways."
+            : "Payment received with thanks. Please keep this receipt for your records."
+    }));
   }
 
   function filterCashFlow() {
@@ -182,6 +240,91 @@ export function FinancialToolsManager({
     return `https://wa.me/254113043315?text=${encodeURIComponent(text)}`;
   }
 
+  function updateLineItem(id: string, field: keyof Omit<DocumentLineItem, "id">, value: string) {
+    setLineItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  }
+
+  function addLineItem() {
+    setLineItems((current) => [
+      ...current,
+      {
+        id: `item-${Date.now()}`,
+        description: "",
+        quantity: "1",
+        unitPrice: ""
+      }
+    ]);
+  }
+
+  function removeLineItem(id: string) {
+    setLineItems((current) => (current.length === 1 ? current : current.filter((item) => item.id !== id)));
+  }
+
+  function printGeneratedDocument() {
+    const preview = window.document.getElementById("finance-document-preview");
+    if (!preview) return;
+
+    const printWindow = window.open("", "_blank", "width=900,height=1100");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    printWindow.document.write(getGeneratedDocumentHtml(preview.innerHTML));
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.setTimeout(() => printWindow.print(), 250);
+  }
+
+  function downloadGeneratedDocument() {
+    const preview = window.document.getElementById("finance-document-preview");
+    if (!preview) return;
+
+    const html = getGeneratedDocumentHtml(preview.innerHTML);
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    const documentName = financeDocument.number.trim() || `${financeDocument.kind}-${new Date().toISOString().slice(0, 10)}`;
+    link.href = url;
+    link.download = `${documentName.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "")}.html`;
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function getGeneratedDocumentHtml(content: string) {
+    const styles = Array.from(window.document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => node.outerHTML)
+      .join("");
+
+    return `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <base href="${window.location.origin}" />
+          <title>${financeDocument.kind === "invoice" ? "Invoice" : "Receipt"} ${financeDocument.number}</title>
+          ${styles}
+          <style>
+            body { margin: 0; background: #f4f4f4; color: #555; font-family: Arial, Helvetica, sans-serif; }
+            .print-shell { box-sizing: border-box; min-height: 100vh; padding: 24px; }
+            #finance-document-preview { margin: 0 auto; max-width: 840px; box-shadow: none !important; }
+            @media print {
+              body { background: white; }
+              .print-shell { min-height: auto; padding: 0; }
+              #finance-document-preview { border: 0 !important; max-width: none; }
+            }
+          </style>
+        </head>
+        <body><div class="print-shell"><div id="finance-document-preview">${content}</div></div></body>
+      </html>
+    `;
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
@@ -217,6 +360,8 @@ export function FinancialToolsManager({
             <TabButton active={activeTab === "cashflow"} onClick={() => showTab("cashflow")}>Cash Flow</TabButton>
             <TabButton active={activeTab === "credit"} onClick={() => showTab("credit")}>Credit Records</TabButton>
             <TabButton active={activeTab === "expenses"} onClick={() => showTab("expenses")}>Expenses</TabButton>
+            <TabButton active={activeTab === "invoices"} onClick={() => showFinanceDocumentTab("invoices")}>Invoices</TabButton>
+            <TabButton active={activeTab === "receipts"} onClick={() => showFinanceDocumentTab("receipts")}>Receipts</TabButton>
             <TabButton active={activeTab === "reminders"} onClick={() => showTab("reminders")}>Payment Reminders</TabButton>
           </div>
 
@@ -492,6 +637,374 @@ export function FinancialToolsManager({
             </div>
           ) : null}
 
+          {activeTab === "invoices" || activeTab === "receipts" ? (
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
+              <div className="space-y-5">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="mb-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
+                      {financeDocument.kind === "invoice" ? "Invoice Generator" : "Receipt Generator"}
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold text-ink dark:text-white">
+                      {financeDocument.kind === "invoice" ? "Create a Professional Invoice" : "Create a Professional Receipt"}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {financeDocument.kind === "invoice"
+                        ? "Enter billing details, service items, tax, and due date before printing or saving as PDF."
+                        : "Enter payer details, payment method, reference, and received items before printing or saving as PDF."}
+                    </p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Document Number</span>
+                      <input
+                        value={financeDocument.number}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, number: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        placeholder="INV-2026-001"
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Issue Date</span>
+                      <input
+                        type="date"
+                        value={financeDocument.issueDate}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, issueDate: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">
+                        {financeDocument.kind === "invoice" ? "Due Date" : "Payment Date"}
+                      </span>
+                      <input
+                        type="date"
+                        value={financeDocument.dueDate}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, dueDate: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                  <h2 className="text-base font-semibold text-ink dark:text-white">Client Details</h2>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Client Name</span>
+                      <input
+                        value={financeDocument.clientName}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, clientName: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        placeholder="Student or company name"
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Phone</span>
+                      <input
+                        value={financeDocument.clientPhone}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, clientPhone: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        placeholder="+254..."
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Email</span>
+                      <input
+                        type="email"
+                        value={financeDocument.clientEmail}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, clientEmail: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        placeholder="client@example.com"
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Address</span>
+                      <input
+                        value={financeDocument.clientAddress}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, clientAddress: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        placeholder="City, country"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-base font-semibold text-ink dark:text-white">Line Items</h2>
+                    <button
+                      type="button"
+                      onClick={addLineItem}
+                      className="inline-flex items-center gap-2 rounded-xl bg-ink px-3 py-2 text-sm font-semibold text-white dark:bg-gold dark:text-ink"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Item
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {lineItems.map((item) => (
+                      <div key={item.id} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-[1fr_90px_130px_42px]">
+                        <input
+                          value={item.description}
+                          onChange={(event) => updateLineItem(item.id, "description", event.target.value)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                          placeholder="Service or product"
+                        />
+                        <input
+                          value={item.quantity}
+                          onChange={(event) => updateLineItem(item.id, "quantity", event.target.value)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                          inputMode="decimal"
+                          placeholder="Qty"
+                        />
+                        <input
+                          value={item.unitPrice}
+                          onChange={(event) => updateLineItem(item.id, "unitPrice", event.target.value)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                          inputMode="decimal"
+                          placeholder="Unit price"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(item.id)}
+                          className="flex h-10 w-10 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 disabled:opacity-40 dark:border-rose-500/30 dark:bg-white/[0.06]"
+                          disabled={lineItems.length === 1}
+                          aria-label="Remove line item"
+                          title="Remove line item"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Tax Rate (%)</span>
+                      <input
+                        value={financeDocument.taxRate}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, taxRate: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        inputMode="decimal"
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Payment Method</span>
+                      <input
+                        value={financeDocument.paymentMethod}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, paymentMethod: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        placeholder="M-Pesa, Bank, Cash"
+                      />
+                    </label>
+                    <label className="text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Reference</span>
+                      <input
+                        value={financeDocument.paymentReference}
+                        onChange={(event) => setFinanceDocument((current) => ({ ...current, paymentReference: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        placeholder="Transaction ID"
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-4 block text-sm text-slate-600 dark:text-slate-300">
+                    <span className="mb-2 block font-medium text-ink dark:text-white">Notes</span>
+                    <textarea
+                      value={financeDocument.notes}
+                      onChange={(event) => setFinanceDocument((current) => ({ ...current, notes: event.target.value }))}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                      rows={3}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex flex-wrap justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={printGeneratedDocument}
+                    className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-gold dark:text-ink dark:hover:bg-[#e7b95f]"
+                  >
+                    <Printer className="h-4 w-4" />
+                    Print
+                  </button>
+                  <button
+                    type="button"
+                    onClick={downloadGeneratedDocument}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </button>
+                </div>
+
+                <div
+                  id="finance-document-preview"
+                  className="overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-panel"
+                >
+                  {financeDocument.kind === "invoice" ? (
+                    <div className="mx-auto min-h-[960px] max-w-[840px] bg-white px-10 py-10 font-sans">
+                      <div className="flex items-start justify-between gap-8 border-b-4 border-[#d7a85b] pb-8">
+                        <DocumentBrandBlock />
+                        <div className="text-right">
+                          <p className="text-4xl font-bold uppercase tracking-[0.08em] text-[#18364a]">Invoice</p>
+                          <p className="mt-3 text-sm font-semibold text-slate-500">{financeDocument.number || "Draft invoice"}</p>
+                          <div className="mt-5 rounded-lg bg-[#18364a] px-5 py-4 text-white">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">Balance Due</p>
+                            <p className="mt-2 text-2xl font-bold">{formatCurrency(grandTotal)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-8 py-9 md:grid-cols-[1fr_280px]">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#b47b29]">Bill To</p>
+                          <p className="mt-3 text-2xl font-bold text-[#18364a]">{financeDocument.clientName || "Client name"}</p>
+                          <div className="mt-3 space-y-1 text-sm leading-6 text-slate-600">
+                            <p>{financeDocument.clientPhone || "Phone number"}</p>
+                            <p>{financeDocument.clientEmail || "Email address"}</p>
+                            <p>{financeDocument.clientAddress || "Client address"}</p>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm">
+                          <DocumentMeta label="Invoice No." value={financeDocument.number || "Draft"} />
+                          <DocumentMeta label="Issue Date" value={financeDocument.issueDate ? formatDate(financeDocument.issueDate) : "-"} />
+                          <DocumentMeta label="Due Date" value={financeDocument.dueDate ? formatDate(financeDocument.dueDate) : "-"} />
+                        </div>
+                      </div>
+
+                      <DocumentItemsTable lineItems={lineItems} />
+
+                      <div className="mt-8 grid gap-8 md:grid-cols-[1fr_300px]">
+                        <div className="rounded-lg border border-slate-200 bg-[#fbfaf7] p-5 text-sm leading-6 text-slate-600">
+                          <p className="font-bold text-[#18364a]">Payment Details</p>
+                          <p className="mt-3">Method: {financeDocument.paymentMethod || "-"}</p>
+                          <p>Reference: {financeDocument.paymentReference || "-"}</p>
+                          <p className="mt-4 whitespace-pre-line">{financeDocument.notes || "-"}</p>
+                        </div>
+                        <DocumentTotals subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} totalLabel="Balance Due" />
+                      </div>
+
+                      <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
+                        <span>Generated by {currentUsername ?? "Barak Pathways CRM"}</span>
+                        <span>Barak Pathways - Nairobi, Kenya</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mx-auto min-h-[960px] max-w-[840px] bg-white px-10 py-10 font-sans text-slate-700">
+                      <div className="border-b-4 border-[#d7a85b] pb-7">
+                        <div className="flex items-start justify-between gap-8">
+                          <DocumentBrandBlock />
+                          <div className="text-right">
+                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#b47b29]">Official Receipt</p>
+                            <h2 className="mt-2 text-4xl font-bold text-[#18364a]">Payment Received</h2>
+                            <div className="mt-5 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2 text-sm font-bold uppercase tracking-[0.16em] text-emerald-700">
+                              Paid
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 grid gap-5 md:grid-cols-4">
+                        <ReceiptInfoBox label="Receipt No." value={financeDocument.number || "Draft receipt"} />
+                        <ReceiptInfoBox
+                          label="Payment Date"
+                          value={
+                            financeDocument.dueDate
+                              ? formatDate(financeDocument.dueDate)
+                              : financeDocument.issueDate
+                                ? formatDate(financeDocument.issueDate)
+                                : "Not set"
+                          }
+                        />
+                        <ReceiptInfoBox label="Payment Method" value={financeDocument.paymentMethod || "-"} />
+                        <ReceiptInfoBox label="Reference" value={financeDocument.paymentReference || "-"} />
+                      </div>
+
+                      <div className="mt-8 grid gap-8 md:grid-cols-[1fr_300px]">
+                        <div className="rounded-lg border border-slate-200 bg-[#fbfaf7] p-6">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#b47b29]">Received From</p>
+                          <p className="mt-3 text-2xl font-bold text-[#18364a]">{financeDocument.clientName || "Client name"}</p>
+                          <div className="mt-3 space-y-1 text-sm leading-6 text-slate-600">
+                            <p>{financeDocument.clientPhone || "Phone number"}</p>
+                            <p>{financeDocument.clientEmail || "Email address"}</p>
+                            <p>{financeDocument.clientAddress || "Client address"}</p>
+                          </div>
+                        </div>
+                        <div className="rounded-lg bg-[#18364a] p-6 text-white">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">Amount Received</p>
+                          <p className="mt-4 text-3xl font-bold">{formatCurrency(grandTotal)}</p>
+                          {taxAmount > 0 ? <p className="mt-3 text-sm text-white/75">Includes tax of {formatCurrency(taxAmount)}</p> : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-8">
+                        <div className="overflow-hidden rounded-lg border border-slate-200">
+                          <table className="min-w-full">
+                            <thead className="bg-[#18364a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                              <tr>
+                                <th className="px-5 py-3">Description</th>
+                                <th className="px-5 py-3 text-right">Qty</th>
+                                <th className="px-5 py-3 text-right">Unit Price</th>
+                                <th className="px-5 py-3 text-right">Amount Paid</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {lineItems.map((item) => {
+                                const quantity = Number(item.quantity) || 0;
+                                const unitPrice = Number(item.unitPrice) || 0;
+                                const amount = quantity * unitPrice;
+                                return (
+                                  <tr key={item.id} className="border-t border-slate-100">
+                                    <td className="px-5 py-4 text-sm font-semibold text-[#18364a]">{item.description || "Service payment"}</td>
+                                    <td className="px-5 py-4 text-right text-sm text-slate-600">{quantity || "-"}</td>
+                                    <td className="px-5 py-4 text-right text-sm text-slate-600">{formatCurrency(unitPrice)}</td>
+                                    <td className="px-5 py-4 text-right text-sm font-bold text-[#18364a]">{formatCurrency(amount || unitPrice)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 grid gap-8 md:grid-cols-[1fr_300px]">
+                        <div className="rounded-lg border border-slate-200 p-5 text-sm leading-6 text-slate-600">
+                          <p className="font-bold text-[#18364a]">Payment Confirmation</p>
+                          <p className="mt-3">
+                            This receipt confirms that Barak Pathways has received payment from{" "}
+                            <span className="font-semibold text-slate-800">{financeDocument.clientName || "the client"}</span>.
+                          </p>
+                          <p className="mt-3 whitespace-pre-line">
+                            {financeDocument.notes || "Payment received with thanks. Please keep this receipt for your records."}
+                          </p>
+                        </div>
+                        <DocumentTotals subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} totalLabel="Total Received" />
+                      </div>
+
+                      <div className="mt-12 grid gap-8 border-t border-slate-200 pt-8 md:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Authorized By</p>
+                          <div className="mt-10 w-56 border-t border-slate-400 pt-3 text-sm font-semibold text-[#18364a]">
+                            {currentUsername ?? "Barak Pathways CRM"}
+                          </div>
+                        </div>
+                        <div className="text-sm leading-6 text-slate-500 md:text-right">
+                          <p className="font-semibold text-[#18364a]">Thank you for your payment.</p>
+                          <p>For questions about this receipt, contact Barak Pathways.</p>
+                          <p className="mt-3">Nairobi, Kenya</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {activeTab === "reminders" ? (
             <div className="space-y-3">
               {reminderItems.length === 0 ? (
@@ -542,6 +1055,107 @@ function MetricCard({
       <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
       <p className={`mt-3 text-3xl font-semibold ${accent}`}>{value}</p>
       {sub ? <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{sub}</p> : null}
+    </div>
+  );
+}
+
+function DocumentMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-slate-200 py-2 last:border-0">
+      <span className="font-semibold text-slate-500">{label}</span>
+      <span className="text-right text-slate-950">{value}</span>
+    </div>
+  );
+}
+
+function DocumentBrandBlock() {
+  return (
+    <div className="flex items-start gap-4">
+      <img
+        src="/barak-pathways-logo.png"
+        alt="Barak Pathways"
+        className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain p-1"
+      />
+      <div>
+        <p className="text-xl font-bold text-[#18364a]">Barak Pathways</p>
+        <p className="mt-1 text-sm font-medium text-[#b47b29]">Education & admissions support</p>
+        <div className="mt-3 space-y-1 text-xs leading-5 text-slate-500">
+          <p>Nairobi, Kenya</p>
+          <p>+254 113 043 315</p>
+          <p>barakpathways.com</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReceiptInfoBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="mt-2 break-words text-sm font-bold text-[#18364a]">{value}</p>
+    </div>
+  );
+}
+
+function DocumentItemsTable({ lineItems }: { lineItems: DocumentLineItem[] }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200">
+      <table className="min-w-full">
+        <thead className="bg-[#18364a] text-left text-xs uppercase tracking-[0.08em] text-white">
+          <tr>
+            <th className="px-4 py-3">Description</th>
+            <th className="px-4 py-3 text-right">Qty</th>
+            <th className="px-4 py-3 text-right">Unit Price</th>
+            <th className="px-4 py-3 text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lineItems.map((item) => {
+            const quantity = Number(item.quantity) || 0;
+            const unitPrice = Number(item.unitPrice) || 0;
+            return (
+              <tr key={item.id} className="border-t border-slate-100">
+                <td className="px-4 py-4 text-sm font-semibold text-[#18364a]">{item.description || "Line item"}</td>
+                <td className="px-4 py-4 text-right text-sm text-slate-600">{quantity || "-"}</td>
+                <td className="px-4 py-4 text-right text-sm text-slate-600">{formatCurrency(unitPrice)}</td>
+                <td className="px-4 py-4 text-right text-sm font-bold text-[#18364a]">{formatCurrency(quantity * unitPrice)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DocumentTotals({
+  subtotal,
+  taxAmount,
+  grandTotal,
+  totalLabel
+}: {
+  subtotal: number;
+  taxAmount: number;
+  grandTotal: number;
+  totalLabel: string;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-500">Subtotal</span>
+        <span className="font-semibold">{formatCurrency(subtotal)}</span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-500">Tax</span>
+        <span className="font-semibold">{formatCurrency(taxAmount)}</span>
+      </div>
+      <div className="border-t border-slate-200 pt-4">
+        <div className="flex justify-between gap-4 text-lg font-bold text-[#18364a]">
+          <span>{totalLabel}</span>
+          <span>{formatCurrency(grandTotal)}</span>
+        </div>
+      </div>
     </div>
   );
 }
