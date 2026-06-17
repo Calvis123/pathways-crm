@@ -286,34 +286,58 @@ export function Sidebar({
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-2.5">
-          {visibleSections.map((section) => (
-            <section
-              key={section.title}
-              className="rounded-lg border border-[#eadacc] bg-white/88 p-1.5 shadow-sm dark:border-white/10 dark:bg-white/[0.03]"
-            >
-              <button
-                type="button"
-                onClick={() => toggleSection(section.title)}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition hover:bg-[#fff6ef] dark:hover:bg-white/[0.05]"
-              >
-                <div className="flex items-center gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                    {section.title}
-                  </p>
-                  <span className="rounded-md border border-[#eadacc] bg-[#fff6ef] px-1.5 py-0.5 text-[10px] font-semibold text-[#8b5e3c] dark:border-white/10 dark:bg-white/[0.08] dark:text-slate-300">
-                    {section.items.length}
-                  </span>
-                </div>
-                <ChevronDown
-                  className={cn(
-                    "h-3.5 w-3.5 text-slate-400 transition-transform dark:text-slate-400",
-                    openSections[section.title] ? "rotate-180" : ""
-                  )}
-                />
-              </button>
+          {visibleSections.map((section) => {
+            const sectionActive = activeSectionTitles.has(section.title);
 
-              <nav className={cn("space-y-1 px-1 pb-1", openSections[section.title] ? "block" : "hidden")}>
-                {section.items.map((item) => {
+            return (
+              <section
+                key={section.title}
+                className={cn(
+                  "rounded-lg border p-1.5 shadow-sm transition-colors",
+                  sectionActive
+                    ? "border-[#ffb79f] bg-[#fff1e6] dark:border-[#ff7a59]/40 dark:bg-[#ff7a59]/10"
+                    : "border-[#eadacc] bg-white/88 dark:border-white/10 dark:bg-white/[0.03]"
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.title)}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition hover:bg-[#fff6ef] dark:hover:bg-white/[0.05]",
+                    sectionActive ? "bg-white/70 dark:bg-white/[0.06]" : ""
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <p
+                      className={cn(
+                        "text-[11px] font-semibold uppercase tracking-[0.16em]",
+                        sectionActive ? "text-[#213343] dark:text-white" : "text-slate-500 dark:text-slate-400"
+                      )}
+                    >
+                      {section.title}
+                    </p>
+                    <span
+                      className={cn(
+                        "rounded-md border px-1.5 py-0.5 text-[10px] font-semibold",
+                        sectionActive
+                          ? "border-[#ffb79f] bg-[#ff7a59] text-white dark:border-[#ff7a59]/40 dark:bg-[#ff7a59]"
+                          : "border-[#eadacc] bg-[#fff6ef] text-[#8b5e3c] dark:border-white/10 dark:bg-white/[0.08] dark:text-slate-300"
+                      )}
+                    >
+                      {section.items.length}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform",
+                      sectionActive ? "text-[#ff7a59] dark:text-[#ffb79f]" : "text-slate-400 dark:text-slate-400",
+                      openSections[section.title] ? "rotate-180" : ""
+                    )}
+                  />
+                </button>
+
+                <nav className={cn("space-y-1 px-1 pb-1", openSections[section.title] ? "block" : "hidden")}>
+                  {section.items.map((item) => {
                   const Icon = item.icon;
                   const itemPath = normalizePath(item.href);
                   const active =
@@ -347,10 +371,11 @@ export function Sidebar({
                       <span className="flex-1">{item.label}</span>
                     </Link>
                   );
-                })}
-              </nav>
-            </section>
-          ))}
+                  })}
+                </nav>
+              </section>
+            );
+          })}
         </div>
       </div>
     </aside>

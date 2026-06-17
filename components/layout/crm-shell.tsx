@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { BrandLogo } from "@/components/branding/brand-logo";
@@ -18,11 +19,12 @@ export function CrmShell({
   children: ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const activePathname = usePathname() ?? pathname;
 
   return (
     <div className="grid min-h-screen bg-[linear-gradient(180deg,#fffaf5_0%,#fff1e6_48%,#f8ede3_100%)] text-slate-950 transition-colors dark:bg-[#142233] dark:text-slate-50 lg:grid-cols-[292px_1fr]">
       <div className="hidden lg:block">
-        <Sidebar pathname={pathname} user={user} />
+        <Sidebar pathname={activePathname} user={user} />
       </div>
 
       <div className="lg:hidden">
@@ -51,7 +53,7 @@ export function CrmShell({
             />
             <div className="relative h-full max-w-[320px]">
               <Sidebar
-                pathname={pathname}
+                pathname={activePathname}
                 user={user}
                 onNavigate={() => setMobileOpen(false)}
                 className="relative z-10 h-full w-[320px] max-w-[86vw] border-r border-[#eadacc] shadow-[0_30px_80px_rgba(15,23,42,0.16)] dark:border-white/10 dark:shadow-[0_30px_80px_rgba(2,6,23,0.4)]"
