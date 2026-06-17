@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 const tones: Record<string, string> = {
   pending:
@@ -21,6 +22,7 @@ const tones: Record<string, string> = {
 };
 
 const filters = ["all", "pending", "confirmed", "completed", "cancelled"] as const;
+const ITEMS_PER_PAGE = 10;
 
 export function ConsultationsManager({
   consultations,
@@ -34,6 +36,7 @@ export function ConsultationsManager({
   const [filter, setFilter] = useState<(typeof filters)[number]>("all");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const items = useMemo(() => {
     const sorted = [...consultations].sort(
@@ -42,6 +45,9 @@ export function ConsultationsManager({
     if (filter === "all") return sorted;
     return sorted.filter((consultation) => consultation.status === filter);
   }, [consultations, filter]);
+  const pageCount = Math.max(1, Math.ceil(items.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedItems = items.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   const studentOptions = useMemo(
     () =>
@@ -121,12 +127,12 @@ export function ConsultationsManager({
   return (
     <div className="space-y-6">
       {errorMessage ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
           {errorMessage}
         </div>
       ) : null}
       {statusMessage ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
           {statusMessage}
         </div>
       ) : null}
@@ -142,7 +148,7 @@ export function ConsultationsManager({
             <select
               name="student_id"
               required
-              className="w-full rounded-2xl border border-[#e4d3c4] bg-white px-4 py-3 text-[#173042] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
+              className="w-full rounded-lg border border-[#e4d3c4] bg-white px-4 py-3 text-[#213343] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
               defaultValue=""
             >
               <option value="" disabled>
@@ -162,7 +168,7 @@ export function ConsultationsManager({
               type="date"
               name="scheduled_date"
               required
-              className="w-full rounded-2xl border border-[#e4d3c4] bg-white px-4 py-3 text-[#173042] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark] dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
+              className="w-full rounded-lg border border-[#e4d3c4] bg-white px-4 py-3 text-[#213343] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark] dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
             />
           </label>
 
@@ -172,7 +178,7 @@ export function ConsultationsManager({
               type="time"
               name="scheduled_time"
               required
-              className="w-full rounded-2xl border border-[#e4d3c4] bg-white px-4 py-3 text-[#173042] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark] dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
+              className="w-full rounded-lg border border-[#e4d3c4] bg-white px-4 py-3 text-[#213343] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark] dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
             />
           </label>
 
@@ -182,7 +188,7 @@ export function ConsultationsManager({
               name="notes"
               rows={3}
               placeholder="Add prep notes, agenda, or follow-up context..."
-              className="w-full rounded-2xl border border-[#e4d3c4] bg-white px-4 py-3 text-[#173042] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400 dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
+              className="w-full rounded-lg border border-[#e4d3c4] bg-white px-4 py-3 text-[#213343] outline-none transition focus:border-[#ff9a7a] focus:ring-2 focus:ring-[#ff9a7a]/20 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400 dark:focus:border-[#ff9a7a] dark:focus:ring-[#ff9a7a]/20"
             />
           </label>
 
@@ -211,7 +217,7 @@ export function ConsultationsManager({
               key={value}
               type="button"
               onClick={() => setFilter(value)}
-              className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                 filter === value
                   ? "bg-ink text-white dark:bg-[#ff7a59] dark:text-white dark:shadow-[0_10px_30px_rgba(255,122,89,0.25)]"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/[0.06] dark:text-slate-200 dark:hover:bg-white/[0.1]"
@@ -223,7 +229,7 @@ export function ConsultationsManager({
         </div>
 
         {items.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-12 text-center dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="rounded-xl border border-dashed border-[#d9c1ad] bg-[#fffaf5] px-6 py-12 text-center dark:border-white/10 dark:bg-white/[0.04]">
             <p className="text-lg font-medium text-ink dark:text-white">No consultations in this view</p>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
               Schedule a new consultation above or switch the filter to review another part of the queue.
@@ -231,10 +237,22 @@ export function ConsultationsManager({
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {items.map((consultation) => (
+            {items.length > ITEMS_PER_PAGE ? (
+              <div className="lg:col-span-2">
+                <PaginationControls
+                  page={safePage}
+                  pageCount={pageCount}
+                  total={items.length}
+                  perPage={ITEMS_PER_PAGE}
+                  onPageChange={setPage}
+                  label="consultations"
+                />
+              </div>
+            ) : null}
+            {paginatedItems.map((consultation) => (
               <div
                 key={consultation.id}
-                className="rounded-3xl border border-slate-100 bg-slate-50/70 p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.03))]"
+                className="rounded-xl border border-[#eadacc] bg-[#fffaf5] p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.03))]"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -311,7 +329,7 @@ export function ConsultationsManager({
                       href={`https://wa.me/${consultation.student.phone.replace(/\D/g, "")}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-2xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,211,102,0.25)]"
+                      className="inline-flex items-center justify-center rounded-lg bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(37,211,102,0.25)]"
                     >
                       <MessageCircleMore className="mr-2 h-4 w-4" />
                       WhatsApp

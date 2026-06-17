@@ -22,7 +22,7 @@ html.dark body {
   background-image:
     radial-gradient(circle at top left, rgba(255, 122, 89, 0.12), transparent 30%),
     radial-gradient(circle at 90% 10%, rgba(94, 234, 212, 0.08), transparent 24%),
-    linear-gradient(180deg, #09111f 0%, #101a2d 48%, #0d1728 100%);
+    linear-gradient(180deg, #213343 0%, #182638 48%, #1b2a3d 100%);
   color: rgb(226 232 240);
 }
 

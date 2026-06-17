@@ -4,15 +4,18 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import type { ReferralRecord, ReferralStatus } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 
 const statuses: ReferralStatus[] = ["new", "contacted", "converted", "rewarded"];
+const ITEMS_PER_PAGE = 10;
 
 export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
   const [form, setForm] = useState({
     referrer_name: "",
     referrer_email: "",
@@ -23,6 +26,9 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
     reward_amount: "5000",
     notes: ""
   });
+  const pageCount = Math.max(1, Math.ceil(referrals.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedReferrals = referrals.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,7 +84,7 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
 
   return (
     <div className="space-y-6">
-      <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+      <Card className="dark:border-white/10 dark:bg-[#182638]">
         <CardHeader
           title="Referral Program"
           description="Capture alumni and partner referrals, track conversion, and manage reward payouts."
@@ -97,7 +103,7 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
             <label key={key} className="text-sm text-slate-600 dark:text-slate-300">
               <span className="mb-2 block font-medium text-ink dark:text-slate-100">{label}</span>
               <input
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                className="w-full rounded-lg border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                 value={form[key as keyof typeof form]}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, [key]: event.target.value }))
@@ -114,11 +120,23 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
         </form>
       </Card>
 
-      <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+      <Card className="dark:border-white/10 dark:bg-[#182638]">
         <CardHeader
           title="Referral Tracker"
           description={`${referrals.length} referral records tracked across outreach, conversion, and rewards.`}
         />
+        {referrals.length > ITEMS_PER_PAGE ? (
+          <div className="mb-4">
+            <PaginationControls
+              page={safePage}
+              pageCount={pageCount}
+              total={referrals.length}
+              perPage={ITEMS_PER_PAGE}
+              onPageChange={setPage}
+              label="referrals"
+            />
+          </div>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-slate-500 dark:text-slate-400">
@@ -131,8 +149,8 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
               </tr>
             </thead>
             <tbody>
-              {referrals.map((referral) => (
-                <tr key={referral.id} className="border-t border-slate-100 dark:border-white/10">
+              {paginatedReferrals.map((referral) => (
+                <tr key={referral.id} className="border-t border-[#f0dfd0] dark:border-white/10">
                   <td className="py-3">
                     <p className="font-medium text-ink dark:text-slate-100">{referral.referrer_name}</p>
                     <p className="text-slate-500 dark:text-slate-400">{referral.referrer_email ?? referral.referrer_phone ?? "-"}</p>
@@ -145,7 +163,7 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
                   <td className="py-3 dark:text-slate-200">{formatCurrency(referral.reward_amount)}</td>
                   <td className="py-3">
                     <select
-                      className="rounded-2xl border border-slate-200 bg-white px-3 py-2 capitalize dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                      className="rounded-lg border border-[#eadacc] bg-white px-3 py-2 capitalize dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                       value={referral.status}
                       onChange={(event) => handleStatusChange(referral.id, event.target.value as ReferralStatus)}
                     >

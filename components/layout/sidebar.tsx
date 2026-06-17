@@ -230,38 +230,38 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-screen flex-col overflow-hidden border-r border-[#ead7c9] bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.12),transparent_24%),linear-gradient(180deg,#fff8f2_0%,#fff3ea_42%,#fff9f4_100%)] text-slate-900 shadow-[0_20px_60px_rgba(168,116,84,0.12)] transition-colors dark:border-[#22314a] dark:bg-[radial-gradient(circle_at_top,rgba(255,122,89,0.12),transparent_24%),linear-gradient(180deg,#08111f_0%,#0d1728_46%,#13203a_100%)] dark:text-white dark:shadow-[0_24px_68px_rgba(8,17,31,0.3)]",
+        "sticky top-0 flex h-screen flex-col overflow-hidden border-r border-[#eadacc] bg-[#fff6ef] text-slate-900 shadow-[8px_0_30px_rgba(120,75,42,0.08)] transition-colors dark:border-white/10 dark:bg-[#172434] dark:text-white",
         className
       )}
     >
-      <div className="border-b border-[#eadbcf] px-4 py-4 dark:border-white/10">
-        <div className="rounded-[1.25rem] border border-[#ecdccf] bg-white/70 p-3 shadow-[0_14px_30px_rgba(221,184,159,0.14)] backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="border-b border-[#eadacc] px-4 py-4 dark:border-white/10">
+        <div className="rounded-lg border border-[#eadacc] bg-white p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
           <div className="flex items-center justify-between gap-3">
-            <BrandLogo imageClassName="w-[122px]" />
-            <span className="rounded-full border border-[#ead6c5] bg-white/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b5794d] dark:border-white/10 dark:bg-white/[0.08] dark:text-gold/80">
+            <BrandLogo imageClassName="w-[104px] drop-shadow-none" />
+            <span className="rounded-md border border-[#eadacc] bg-[#fff6ef] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b5e3c] dark:border-white/10 dark:bg-white/[0.08] dark:text-slate-300">
               CRM
             </span>
           </div>
 
           {user ? (
-            <div className="mt-3 rounded-[1rem] border border-[#eadacc] bg-white/80 p-3 dark:border-white/10 dark:bg-white/[0.05]">
+            <div className="mt-3 rounded-lg border border-[#d9c1ad] bg-[linear-gradient(135deg,#31424a_0%,#516672_100%)] p-3 text-white shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#ff7a59,#e09a54)] text-sm font-semibold text-white shadow-[0_8px_14px_rgba(255,122,89,0.2)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-sm font-semibold text-[#213343] shadow-sm dark:bg-[#ff7a59] dark:text-white">
                   {user.full_name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-[#b5794d] dark:text-gold/80">
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60 dark:text-slate-400">
                     {roleLabel(user.role)}
                   </p>
-                  <p className="truncate text-sm font-semibold text-[#17324d] dark:text-white">{user.full_name}</p>
-                  <p className="truncate text-xs text-[#6d8093] dark:text-slate-400">@{user.username}</p>
+                  <p className="truncate text-sm font-semibold text-white">{user.full_name}</p>
+                  <p className="truncate text-xs text-white/60">@{user.username}</p>
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant="secondary"
-                  className="h-8.5 rounded-xl border border-[#e7d3c4] bg-white px-2.5 text-[12px] text-[#17324d] hover:bg-white/90 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1]"
+                  className="h-9 rounded-lg border-white/10 bg-white/10 px-2.5 text-[12px] text-white hover:bg-white/15"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-1.5 h-3.5 w-3.5" />
@@ -270,7 +270,7 @@ export function Sidebar({
                 <Button
                   type="button"
                   variant="secondary"
-                  className="h-8.5 rounded-xl border border-[#e7d3c4] bg-white px-2.5 text-[12px] text-[#17324d] hover:bg-white/90 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100 dark:hover:bg-white/[0.12]"
+                  className="h-9 rounded-lg border-white/10 bg-white/10 px-2.5 text-[12px] text-white hover:bg-white/15"
                   onClick={toggleTheme}
                   aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                   title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -285,28 +285,28 @@ export function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {visibleSections.map((section) => (
             <section
               key={section.title}
-              className="rounded-2xl border border-[#ebdccf] bg-white/55 p-1.5 shadow-[0_10px_20px_rgba(221,184,159,0.1)] dark:border-white/10 dark:bg-white/[0.03]"
+              className="rounded-lg border border-[#eadacc] bg-white/88 p-1.5 shadow-sm dark:border-white/10 dark:bg-white/[0.03]"
             >
               <button
                 type="button"
                 onClick={() => toggleSection(section.title)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl px-2.5 py-2 text-left transition hover:bg-white/70 dark:hover:bg-white/[0.05]"
+                className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition hover:bg-[#fff6ef] dark:hover:bg-white/[0.05]"
               >
                 <div className="flex items-center gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#af7348] dark:text-gold/80">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                     {section.title}
                   </p>
-                  <span className="rounded-full border border-[#ecd8c9] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#b5794d] dark:border-white/10 dark:bg-white/[0.08] dark:text-slate-300">
+                  <span className="rounded-md border border-[#eadacc] bg-[#fff6ef] px-1.5 py-0.5 text-[10px] font-semibold text-[#8b5e3c] dark:border-white/10 dark:bg-white/[0.08] dark:text-slate-300">
                     {section.items.length}
                   </span>
                 </div>
                 <ChevronDown
                   className={cn(
-                    "h-3.5 w-3.5 text-[#b5794d] transition-transform dark:text-gold/80",
+                    "h-3.5 w-3.5 text-slate-400 transition-transform dark:text-slate-400",
                     openSections[section.title] ? "rotate-180" : ""
                   )}
                 />
@@ -327,19 +327,19 @@ export function Sidebar({
                       href={item.href}
                       onClick={onNavigate}
                       className={cn(
-                        "group relative flex items-center gap-2.5 overflow-hidden rounded-xl px-2.5 py-2.5 text-[13px] font-medium transition",
+                        "group relative flex items-center gap-2.5 overflow-hidden rounded-md px-2.5 py-2.5 text-[13px] font-medium transition",
                         active
-                          ? "border border-[#efc3a5] bg-[linear-gradient(135deg,rgba(255,122,89,0.18),rgba(255,238,228,0.96),rgba(255,255,255,0.92))] text-[#17324d] shadow-[0_12px_24px_rgba(202,145,104,0.16)] dark:border-[#f4b089]/35 dark:bg-[linear-gradient(135deg,rgba(255,122,89,0.34),rgba(224,154,84,0.14),rgba(255,255,255,0.08))] dark:text-white dark:shadow-[0_14px_28px_rgba(8,17,31,0.24)]"
-                          : "border border-transparent text-[#5f7286] hover:border-[#ecd8c9] hover:bg-white/70 hover:text-[#17324d] dark:text-slate-300 dark:hover:border-white/10 dark:hover:bg-white/[0.045] dark:hover:text-white"
+                          ? "border border-[#eadacc] bg-[#fff1e6] text-slate-950 shadow-sm dark:border-white/10 dark:bg-white/[0.1] dark:text-white"
+                          : "border border-transparent text-slate-600 hover:border-[#eadacc] hover:bg-[#fff6ef] hover:text-slate-950 dark:text-slate-300 dark:hover:border-white/10 dark:hover:bg-white/[0.06] dark:hover:text-white"
                       )}
                     >
-                      {active ? <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-[linear-gradient(180deg,#ff7a59,#e09a54)]" /> : null}
+                      {active ? <span className="absolute inset-y-1.5 left-0 w-1 rounded-r-full bg-[#ff7a59]" /> : null}
                       <span
                         className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-lg transition",
                           active
-                            ? "bg-white/85 text-[#d6864f] shadow-[0_6px_14px_rgba(255,122,89,0.12)] dark:bg-white/14 dark:text-gold"
-                            : "bg-white/65 text-[#8c97a5] group-hover:bg-white group-hover:text-[#d6864f] dark:bg-white/[0.04] dark:text-slate-400 dark:group-hover:bg-white/[0.08] dark:group-hover:text-gold"
+                            ? "bg-[#213343] text-white dark:bg-[#ff7a59]"
+                            : "bg-[#fffaf5] text-[#9b7b62] ring-1 ring-[#eadacc] group-hover:text-slate-700 dark:bg-white/[0.04] dark:text-slate-400 dark:ring-white/10 dark:group-hover:bg-white/[0.08] dark:group-hover:text-white"
                         )}
                       >
                         <Icon className="h-3.5 w-3.5" />

@@ -44,17 +44,17 @@ export function StudentTimelineView({
           action={<Link href={`/students/${student.id}`} className="text-sm font-medium text-ink underline">Back to student</Link>}
         />
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
             <p className="text-sm text-slate-500">Progress</p>
             <p className="mt-2 text-3xl font-semibold text-ink">{progress}%</p>
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
             <p className="text-sm text-slate-500">Total Paid</p>
             <p className="mt-2 text-3xl font-semibold text-ink">
               {formatCurrency(student.consultation_upfront_paid + student.consultation_balance_paid)}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
             <p className="text-sm text-slate-500">Documents</p>
             <p className="mt-2 text-3xl font-semibold text-ink">{documents.length}</p>
           </div>
@@ -70,7 +70,7 @@ export function StudentTimelineView({
           {milestones.map((item, index) => (
             <div key={item.title} className="flex gap-4">
               <div className={`mt-1 h-4 w-4 rounded-full ${item.done ? "bg-gold" : "bg-slate-200"}`} />
-              <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="flex-1 rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
                 <p className="font-medium text-ink">{index + 1}. {item.title}</p>
                 <p className="mt-1 text-sm text-slate-600">{item.detail}</p>
               </div>
@@ -84,7 +84,7 @@ export function StudentTimelineView({
           <CardHeader title="Documents" description={`${documents.length} uploaded records`} />
           <div className="space-y-3">
             {documents.map((document) => (
-              <div key={document.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div key={document.id} className="rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
                 <p className="font-medium text-ink">{document.document_type}</p>
                 <p className="text-sm text-slate-500">{document.original_filename}</p>
                 <p className="mt-1 text-xs text-slate-500">
@@ -99,7 +99,7 @@ export function StudentTimelineView({
           <CardHeader title="Recent Notes" description="Internal CRM notes tied to this student." />
           <div className="space-y-3">
             {notes.slice(0, 6).map((note) => (
-              <div key={note.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div key={note.id} className="rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
                 <p className="font-medium text-ink">{note.note_type} · {note.priority}</p>
                 <p className="mt-2 text-sm text-slate-700">{note.note_text}</p>
                 <p className="mt-2 text-xs text-slate-500">
@@ -128,14 +128,14 @@ export function StudentTimelineView({
         />
         <div className="space-y-4">
           {activities.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">
+            <div className="rounded-lg border border-dashed border-[#d9c1ad] px-4 py-10 text-center text-sm text-slate-500">
               No activity has been logged for this student yet.
             </div>
           ) : (
             activities.map((activity) => (
               <div key={activity.id} className="flex gap-4">
                 <div className={`mt-1 h-4 w-4 rounded-full ${channelTone(activity.channel)}`} />
-                <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex-1 rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
                   <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                     <div>
                       <p className="font-medium text-ink">{activity.title}</p>
@@ -171,6 +171,6 @@ function channelTone(channel: StudentActivityEvent["channel"]) {
   if (channel === "reminder") return "bg-rose-500";
   if (channel === "portal") return "bg-indigo-500";
   if (channel === "payment") return "bg-gold";
-  if (channel === "document") return "bg-slate-500";
+  if (channel === "document") return "bg-[#516672]";
   return "bg-slate-300";
 }

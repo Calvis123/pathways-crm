@@ -68,8 +68,8 @@ export function IeltsDashboardTable({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)] dark:shadow-[0_24px_60px_rgba(2,6,23,0.34)]">
-        <div className="border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(180deg,#18263d_0%,#132034_100%)]">
+      <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)] dark:shadow-[0_24px_60px_rgba(2,6,23,0.34)]">
+        <div className="border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(180deg,#18263d_0%,#132034_100%)]">
           <h1 className="font-serif text-3xl">IELTS Training Dashboard</h1>
           <p className="mt-2 text-sm text-white/70">
             Track IELTS student progress, scores, and training sessions.
@@ -87,11 +87,11 @@ export function IeltsDashboardTable({
           </div>
 
           {targetScoreBreakdown.length > 0 ? (
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
+            <div className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
               <h3 className="mb-4 text-lg font-semibold text-ink dark:text-white">Target Score Breakdown</h3>
               <div className="flex flex-wrap gap-3">
                 {targetScoreBreakdown.map((item) => (
-                  <span key={item.score} className="rounded-full border border-gold/30 bg-slate-50 px-4 py-2 text-sm text-slate-700 dark:bg-white/[0.06] dark:text-slate-200">
+                  <span key={item.score} className="rounded-full border border-gold/30 bg-[#fff6ef] px-4 py-2 text-sm text-slate-700 dark:bg-white/[0.06] dark:text-slate-200">
                     <strong className="text-gold">{item.score}</strong>: {item.count} student(s)
                   </span>
                 ))}
@@ -103,13 +103,13 @@ export function IeltsDashboardTable({
             <h2 className="font-serif text-2xl text-ink dark:text-white">IELTS Students</h2>
             <Link
               href="/"
-              className="inline-flex rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
+              className="inline-flex rounded-xl border border-[#eadacc] px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-[#fff6ef] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
             >
               Back to Dashboard
             </Link>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10 dark:bg-white/[0.03]">
+          <div className="overflow-x-auto rounded-2xl border border-[#eadacc] dark:border-white/10 dark:bg-white/[0.03]">
             {rows.length === 0 ? (
               <div className="px-6 py-20 text-center text-slate-500 dark:text-slate-300">
                 <div className="text-sm font-semibold uppercase tracking-[0.2em] text-gold/70">IELTS</div>
@@ -119,7 +119,7 @@ export function IeltsDashboardTable({
             ) : (
               <table className="min-w-full border-collapse">
                 <thead>
-                  <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white dark:bg-[#17243a]">
+                  <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white dark:bg-[#17243a]">
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Phone</th>
                     <th className="px-4 py-3">Location</th>
@@ -132,7 +132,7 @@ export function IeltsDashboardTable({
                 </thead>
                 <tbody className="dark:text-slate-200">
                   {rows.map((student) => (
-                    <tr key={student.id} className="border-b border-slate-100 hover:bg-gold/5 dark:border-white/6 dark:hover:bg-white/[0.04]">
+                    <tr key={student.id} className="border-b border-[#f0dfd0] hover:bg-gold/5 dark:border-white/6 dark:hover:bg-white/[0.04]">
                       <td className="px-4 py-4 font-semibold text-ink dark:text-white">{student.full_name}</td>
                       <td className="px-4 py-4">{student.phone ?? "-"}</td>
                       <td className="px-4 py-4">{student.location ?? "-"}</td>
@@ -164,7 +164,7 @@ export function IeltsDashboardTable({
           </div>
 
           {totalPages > 1 ? (
-            <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 lg:flex-row lg:items-center lg:justify-between dark:border-white/10 dark:bg-white/[0.04]">
+            <div className="flex flex-col gap-4 rounded-2xl border border-[#eadacc] bg-white px-5 py-4 lg:flex-row lg:items-center lg:justify-between dark:border-white/10 dark:bg-white/[0.04]">
               <p className="text-sm text-slate-500 dark:text-slate-300">
                 Showing <strong>{showingFrom}</strong> to <strong>{showingTo}</strong> of{" "}
                 <strong>{totalStudents}</strong> students
@@ -172,10 +172,10 @@ export function IeltsDashboardTable({
               <div className="flex flex-wrap items-center gap-2">
                 {page > 1 ? (
                   <>
-                    <Link href={pageHref(1)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
+                    <Link href={pageHref(1)} className="rounded-xl border border-[#eadacc] px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                       First
                     </Link>
-                    <Link href={pageHref(page - 1)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
+                    <Link href={pageHref(page - 1)} className="rounded-xl border border-[#eadacc] px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                       Previous
                     </Link>
                   </>
@@ -189,7 +189,7 @@ export function IeltsDashboardTable({
                       {pageNumber}
                     </span>
                   ) : (
-                    <Link key={pageNumber} href={pageHref(pageNumber)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
+                    <Link key={pageNumber} href={pageHref(pageNumber)} className="rounded-xl border border-[#eadacc] px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                       {pageNumber}
                     </Link>
                   )
@@ -199,10 +199,10 @@ export function IeltsDashboardTable({
 
                 {page < totalPages ? (
                   <>
-                    <Link href={pageHref(page + 1)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
+                    <Link href={pageHref(page + 1)} className="rounded-xl border border-[#eadacc] px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                       Next
                     </Link>
-                    <Link href={pageHref(totalPages)} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
+                    <Link href={pageHref(totalPages)} className="rounded-xl border border-[#eadacc] px-3 py-2 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                       Last
                     </Link>
                   </>
@@ -228,7 +228,7 @@ function MetricCard({
   tone?: string;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
       <p className="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{label}</p>
       <p className={`mt-3 text-3xl font-extrabold ${tone} dark:text-white`}>{value}</p>
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">{sub}</p>

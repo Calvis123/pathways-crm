@@ -5,8 +5,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { readJsonBody } from "@/lib/http";
 import type { Student, StudentNote } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+
+const ITEMS_PER_PAGE = 10;
 
 export function StudentNotesManager({
   student,
@@ -18,10 +22,14 @@ export function StudentNotesManager({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState("");
+  const [page, setPage] = useState(0);
   const [form, setForm] = useState({
     note_text: "",
     note_type: "call"
   });
+  const pageCount = Math.max(1, Math.ceil(notes.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedNotes = notes.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   async function createNote(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,9 +47,9 @@ export function StudentNotesManager({
           is_private: false
         })
       });
-      const body = (await response.json()) as { error?: string };
+      const body = await readJsonBody<{ error?: string }>(response);
       if (!response.ok) {
-        setStatus(body.error ?? "Failed to save note.");
+        setStatus(body?.error ?? "Failed to save note.");
         return;
       }
       setForm({
@@ -62,9 +70,9 @@ export function StudentNotesManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note_text: next })
       });
-      const body = (await response.json()) as { error?: string };
+      const body = await readJsonBody<{ error?: string }>(response);
       if (!response.ok) {
-        setStatus(body.error ?? "Failed to update note.");
+        setStatus(body?.error ?? "Failed to update note.");
         return;
       }
       router.refresh();
@@ -86,7 +94,7 @@ export function StudentNotesManager({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-      <Card className="h-fit border-slate-200/80 bg-white/95 shadow-lg shadow-slate-200/40 backdrop-blur dark:border-white/10 dark:bg-[#091738]/80 dark:shadow-none">
+      <Card className="h-fit border-[#eadacc]/80 bg-white/95 shadow-lg shadow-slate-200/40 backdrop-blur dark:border-white/10 dark:bg-[#182638]/90 dark:shadow-none">
         <CardHeader
           title={student.full_name}
           description={`${student.email} | ${student.phone ?? "No phone"} | ${student.stage}`}
@@ -95,7 +103,7 @@ export function StudentNotesManager({
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Interaction type</p>
             <select
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium capitalize text-slate-700 shadow-sm transition focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-100 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:focus:border-amber-300/40 dark:focus:ring-amber-400/10"
+              className="w-full rounded-lg border border-[#eadacc] bg-white px-4 py-3 text-sm font-medium capitalize text-slate-700 shadow-sm transition focus:border-[#ff9a77] focus:outline-none focus:ring-4 focus:ring-[#ff7a59]/10 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:focus:border-amber-300/40 dark:focus:ring-amber-400/10"
               value={form.note_type}
               onChange={(event) => setForm((current) => ({ ...current, note_type: event.target.value }))}
             >
@@ -110,7 +118,7 @@ export function StudentNotesManager({
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Notes</p>
             <textarea
-              className="min-h-36 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-100 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:focus:border-amber-300/40 dark:focus:ring-amber-400/10"
+              className="min-h-36 w-full rounded-lg border border-[#eadacc] bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition focus:border-[#ff9a77] focus:outline-none focus:ring-4 focus:ring-[#ff7a59]/10 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:focus:border-amber-300/40 dark:focus:ring-amber-400/10"
               placeholder="Write interaction notes (required)"
               value={form.note_text}
               onChange={(event) => setForm((current) => ({ ...current, note_text: event.target.value }))}
@@ -131,14 +139,14 @@ export function StudentNotesManager({
         </form>
       </Card>
 
-      <Card className="border-slate-200/80 bg-white/95 shadow-lg shadow-slate-200/40 backdrop-blur dark:border-white/10 dark:bg-[#091738]/80 dark:shadow-none">
+      <Card className="border-[#eadacc]/80 bg-white/95 shadow-lg shadow-slate-200/40 backdrop-blur dark:border-white/10 dark:bg-[#182638]/90 dark:shadow-none">
         <CardHeader
           title="Interaction History"
           description="Latest first. Each interaction is saved as a new record with automatic date/time."
         />
 
         {notes.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-gradient-to-br from-slate-50 to-white p-8 text-center dark:border-white/15 dark:from-white/[0.05] dark:to-white/[0.02]">
+          <div className="rounded-lg border border-dashed border-[#d9c1ad] bg-gradient-to-br from-[#fffaf5] to-white p-8 text-center dark:border-white/15 dark:from-white/[0.05] dark:to-white/[0.02]">
             <p className="text-base font-semibold text-ink dark:text-white">No interactions yet</p>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
               Add the first note from the form to start this lead&apos;s communication timeline.
@@ -146,10 +154,20 @@ export function StudentNotesManager({
           </div>
         ) : (
           <div className="space-y-4">
-            {notes.map((note) => (
+            {notes.length > ITEMS_PER_PAGE ? (
+              <PaginationControls
+                page={safePage}
+                pageCount={pageCount}
+                total={notes.length}
+                perPage={ITEMS_PER_PAGE}
+                onPageChange={setPage}
+                label="notes"
+              />
+            ) : null}
+            {paginatedNotes.map((note) => (
               <div
                 key={note.id}
-                className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 p-4 shadow-sm transition hover:shadow-md dark:border-white/10 dark:from-white/[0.06] dark:to-white/[0.03]"
+                className="rounded-lg border border-[#eadacc] bg-gradient-to-b from-white to-[#fffaf5] p-4 shadow-sm transition hover:shadow-md dark:border-white/10 dark:from-white/[0.06] dark:to-white/[0.03]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>

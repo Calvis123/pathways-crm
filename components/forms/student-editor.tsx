@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ArrowLeft, CreditCard, GraduationCap, Save, Trash2, UserRound } from "lucide-react";
+import { stageLabels } from "@/lib/constants";
+import { readJsonBody } from "@/lib/http";
 import type { Student, StudentStage } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const stages: StudentStage[] = ["lead", "inquiry", "consultation", "application", "visa", "enrolled", "placed", "employment", "lost"];
@@ -38,6 +42,15 @@ export function StudentEditor({
   });
   const [duplicates, setDuplicates] = useState<Array<Pick<Student, "id" | "full_name" | "email" | "phone" | "passport_number" | "stage">>>([]);
 
+  const paidTotal = Number(form.consultation_upfront_paid || 0) + Number(form.consultation_balance_paid || 0);
+  const initials = (form.full_name || "New Student")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((name) => name[0])
+    .join("")
+    .toUpperCase();
+
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
@@ -53,8 +66,8 @@ export function StudentEditor({
         excludeId: initial?.id
       })
     });
-    const body = (await response.json()) as { duplicates?: typeof duplicates };
-    setDuplicates(body.duplicates ?? []);
+    const body = await readJsonBody<{ duplicates?: typeof duplicates }>(response);
+    setDuplicates(body?.duplicates ?? []);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -86,9 +99,9 @@ export function StudentEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const body = (await response.json()) as { error?: string; id?: string };
+    const body = await readJsonBody<{ error?: string; id?: string }>(response);
     if (!response.ok) {
-      setStatus(body.error ?? "Could not save student.");
+      setStatus(body?.error ?? "Could not save student.");
       return;
     }
 
@@ -101,62 +114,153 @@ export function StudentEditor({
     if (!initial) return;
     if (!window.confirm("Delete this student? This cannot be undone.")) return;
     const response = await fetch(`/api/students/${initial.id}`, { method: "DELETE" });
-    const body = (await response.json()) as { error?: string };
+    const body = await readJsonBody<{ error?: string }>(response);
     if (!response.ok) {
-      setStatus(body.error ?? "Could not delete student.");
+      setStatus(body?.error ?? "Could not delete student.");
       return;
     }
     router.push("/students");
     router.refresh();
   }
 
+  const fieldClass =
+    "h-11 rounded-lg border border-[#eadacc] bg-white px-4 text-sm outline-none transition focus:border-[#ff9a77] focus:ring-4 focus:ring-[#ff7a59]/10 disabled:bg-[#fff6ef] disabled:text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:disabled:bg-white/[0.03]";
+  const labelClass = "space-y-2 text-sm text-slate-600 dark:text-slate-300";
+  const labelTextClass = "block text-xs font-semibold uppercase tracking-[0.08em] text-[#8b5e3c] dark:text-slate-400";
+
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="rounded-[2rem] border border-white/60 bg-white/90 p-6 shadow-panel">
-        <div className="grid gap-4 md:grid-cols-2">
-          <input disabled={readOnly} value={form.full_name} onChange={(e) => update("full_name", e.target.value)} onBlur={checkDuplicates} placeholder="Full name" className="rounded-2xl border border-slate-200 px-4 py-3" required />
-          <input disabled={readOnly} value={form.email} onChange={(e) => update("email", e.target.value)} onBlur={checkDuplicates} type="email" placeholder="Email" className="rounded-2xl border border-slate-200 px-4 py-3" required />
-          <input disabled={readOnly} value={form.phone} onChange={(e) => update("phone", e.target.value)} onBlur={checkDuplicates} placeholder="Phone" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <input disabled={readOnly} value={form.passport_number} onChange={(e) => update("passport_number", e.target.value)} onBlur={checkDuplicates} placeholder="Passport number" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <input disabled={readOnly} value={form.location} onChange={(e) => update("location", e.target.value)} placeholder="Location" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <input disabled={readOnly} value={form.country_interest} onChange={(e) => update("country_interest", e.target.value)} placeholder="Country interest" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <input disabled={readOnly} value={form.program_level} onChange={(e) => update("program_level", e.target.value)} placeholder="Program level" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <input disabled={readOnly} value={form.university_name} onChange={(e) => update("university_name", e.target.value)} placeholder="University" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <select disabled={readOnly} value={form.stage} onChange={(e) => update("stage", e.target.value as StudentStage)} className="rounded-2xl border border-slate-200 px-4 py-3">
-            {stages.map((stage) => (
-              <option key={stage} value={stage}>{stage}</option>
-            ))}
-          </select>
-          <input disabled={readOnly} value={form.lead_source} onChange={(e) => update("lead_source", e.target.value)} placeholder="Lead source" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <select disabled={readOnly} value={form.payment_status} onChange={(e) => update("payment_status", e.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3">
-            <option value="pending">Pending</option>
-            <option value="installment">Installment</option>
-            <option value="full">Full</option>
-          </select>
-          <label className="flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
-            <input disabled={readOnly} type="checkbox" checked={form.ielts_enrolled} onChange={(e) => update("ielts_enrolled", e.target.checked)} />
-            IELTS enrolled
-          </label>
-          <input disabled={readOnly} value={form.consultation_upfront_paid} onChange={(e) => update("consultation_upfront_paid", e.target.value)} type="number" placeholder="Consultation upfront" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <input disabled={readOnly} value={form.consultation_balance_paid} onChange={(e) => update("consultation_balance_paid", e.target.value)} type="number" placeholder="Consultation balance" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <input disabled={readOnly} value={form.ielts_amount} onChange={(e) => update("ielts_amount", e.target.value)} type="number" placeholder="IELTS amount" className="rounded-2xl border border-slate-200 px-4 py-3" />
-          <select disabled={readOnly} value={form.ielts_payment_status} onChange={(e) => update("ielts_payment_status", e.target.value as "paid" | "unpaid")} className="rounded-2xl border border-slate-200 px-4 py-3">
-            <option value="unpaid">IELTS unpaid</option>
-            <option value="paid">IELTS paid</option>
-          </select>
-          <textarea disabled={readOnly} value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Notes" className="min-h-32 rounded-2xl border border-slate-200 px-4 py-3 md:col-span-2" />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <section className="overflow-hidden rounded-xl border border-[#eadacc] bg-white shadow-[0_18px_50px_rgba(120,75,42,0.1)] dark:border-white/10 dark:bg-[#182638]">
+        <div className="grid gap-5 bg-[linear-gradient(135deg,#fffaf5_0%,#fff1e6_58%,#ffe0c8_100%)] px-5 py-6 lg:grid-cols-[1fr_320px] lg:px-7">
+          <div>
+            <Link href="/students" className="inline-flex items-center gap-2 text-sm font-semibold text-[#8b5e3c] underline-offset-4 hover:underline">
+              <ArrowLeft className="h-4 w-4" />
+              Back to students
+            </Link>
+            <h1 className="mt-4 text-3xl font-semibold text-[#213343]">
+              {initial ? "Student Profile" : "Create Student Record"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#5f7182]">
+              Capture admissions, consultation, payment, IELTS, and follow-up details in one organized profile.
+            </p>
+          </div>
+          <div className="rounded-lg border border-[#eadacc] bg-white/78 p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#31424a,#516672)] text-sm font-semibold text-white">
+                {initials || <UserRound className="h-5 w-5" />}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-[#213343]">{form.full_name || "Unnamed student"}</p>
+                <p className="truncate text-sm text-slate-500">{form.email || "Email not set"}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-[#fff6ef] p-3">
+                <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Stage</p>
+                <p className="mt-1 font-semibold text-[#213343]">{stageLabels[form.stage as StudentStage]}</p>
+              </div>
+              <div className="rounded-lg bg-[#fff6ef] p-3">
+                <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Paid</p>
+                <p className="mt-1 font-semibold text-[#213343]">{formatCurrency(paidTotal)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+        <div className="space-y-6">
+          <section className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#182638]">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#eadacc] pb-4 dark:border-white/10">
+              <UserRound className="h-5 w-5 text-[#c9692c]" />
+              <div>
+                <h2 className="font-semibold text-[#213343] dark:text-white">Identity & Contact</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Core student details used across the CRM.</p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className={labelClass}><span className={labelTextClass}>Full name</span><input disabled={readOnly} value={form.full_name} onChange={(e) => update("full_name", e.target.value)} onBlur={checkDuplicates} className={fieldClass} required /></label>
+              <label className={labelClass}><span className={labelTextClass}>Email</span><input disabled={readOnly} value={form.email} onChange={(e) => update("email", e.target.value)} onBlur={checkDuplicates} type="email" className={fieldClass} required /></label>
+              <label className={labelClass}><span className={labelTextClass}>Phone</span><input disabled={readOnly} value={form.phone} onChange={(e) => update("phone", e.target.value)} onBlur={checkDuplicates} className={fieldClass} /></label>
+              <label className={labelClass}><span className={labelTextClass}>Passport number</span><input disabled={readOnly} value={form.passport_number} onChange={(e) => update("passport_number", e.target.value)} onBlur={checkDuplicates} className={fieldClass} /></label>
+              <label className={labelClass}><span className={labelTextClass}>Location</span><input disabled={readOnly} value={form.location} onChange={(e) => update("location", e.target.value)} className={fieldClass} /></label>
+              <label className={labelClass}><span className={labelTextClass}>Lead source</span><input disabled={readOnly} value={form.lead_source} onChange={(e) => update("lead_source", e.target.value)} className={fieldClass} /></label>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#182638]">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#eadacc] pb-4 dark:border-white/10">
+              <GraduationCap className="h-5 w-5 text-[#c9692c]" />
+              <div>
+                <h2 className="font-semibold text-[#213343] dark:text-white">Study Pathway</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Destination, program, and current pipeline stage.</p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className={labelClass}><span className={labelTextClass}>Country interest</span><input disabled={readOnly} value={form.country_interest} onChange={(e) => update("country_interest", e.target.value)} className={fieldClass} /></label>
+              <label className={labelClass}><span className={labelTextClass}>Program level</span><input disabled={readOnly} value={form.program_level} onChange={(e) => update("program_level", e.target.value)} className={fieldClass} /></label>
+              <label className={labelClass}><span className={labelTextClass}>University</span><input disabled={readOnly} value={form.university_name} onChange={(e) => update("university_name", e.target.value)} className={fieldClass} /></label>
+              <label className={labelClass}>
+                <span className={labelTextClass}>Stage</span>
+                <select disabled={readOnly} value={form.stage} onChange={(e) => update("stage", e.target.value as StudentStage)} className={fieldClass}>
+                  {stages.map((stage) => <option key={stage} value={stage}>{stageLabels[stage]}</option>)}
+                </select>
+              </label>
+            </div>
+          </section>
         </div>
 
+        <aside className="space-y-6">
+          <section className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#182638]">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#eadacc] pb-4 dark:border-white/10">
+              <CreditCard className="h-5 w-5 text-[#c9692c]" />
+              <div>
+                <h2 className="font-semibold text-[#213343] dark:text-white">Payments & IELTS</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Consultation and training billing status.</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <label className={labelClass}>
+                <span className={labelTextClass}>Payment status</span>
+                <select disabled={readOnly} value={form.payment_status} onChange={(e) => update("payment_status", e.target.value)} className={fieldClass}>
+                  <option value="pending">Pending</option>
+                  <option value="installment">Installment</option>
+                  <option value="full">Full</option>
+                </select>
+              </label>
+              <label className={labelClass}><span className={labelTextClass}>Consultation upfront</span><input disabled={readOnly} value={form.consultation_upfront_paid} onChange={(e) => update("consultation_upfront_paid", e.target.value)} type="number" className={fieldClass} /></label>
+              <label className={labelClass}><span className={labelTextClass}>Consultation balance</span><input disabled={readOnly} value={form.consultation_balance_paid} onChange={(e) => update("consultation_balance_paid", e.target.value)} type="number" className={fieldClass} /></label>
+              <label className="flex items-center gap-2 rounded-lg border border-[#eadacc] bg-[#fffaf5] px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200">
+                <input disabled={readOnly} type="checkbox" checked={form.ielts_enrolled} onChange={(e) => update("ielts_enrolled", e.target.checked)} className="h-4 w-4 rounded border-[#d9c1ad] accent-[#213343]" />
+                IELTS enrolled
+              </label>
+              <label className={labelClass}><span className={labelTextClass}>IELTS amount</span><input disabled={readOnly} value={form.ielts_amount} onChange={(e) => update("ielts_amount", e.target.value)} type="number" className={fieldClass} /></label>
+              <label className={labelClass}>
+                <span className={labelTextClass}>IELTS payment</span>
+                <select disabled={readOnly} value={form.ielts_payment_status} onChange={(e) => update("ielts_payment_status", e.target.value as "paid" | "unpaid")} className={fieldClass}>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </label>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <section className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#182638]">
+        <label className={labelClass}>
+          <span className={labelTextClass}>Internal notes</span>
+          <textarea disabled={readOnly} value={form.notes} onChange={(e) => update("notes", e.target.value)} className={`${fieldClass} min-h-32 w-full py-3`} />
+        </label>
+
         {duplicates.length > 0 ? (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">Possible duplicates found:</p>
             <div className="mt-2 space-y-2">
               {duplicates.map((student) => (
                 <p key={student.id}>
-                  <Link href={`/students/${student.id}`} className="font-medium underline">
-                    {student.full_name}
-                  </Link>
-                  {" "} | {student.email} | {student.phone ?? "No phone"} | {student.stage}
+                  <Link href={`/students/${student.id}`} className="font-medium underline">{student.full_name}</Link>
+                  {" "} | {student.email} | {student.phone ?? "No phone"} | {stageLabels[student.stage]}
                 </p>
               ))}
             </div>
@@ -164,16 +268,24 @@ export function StudentEditor({
         ) : null}
 
         <div className="mt-6 flex flex-wrap gap-3">
-          {!readOnly ? <Button type="submit">{initial ? "Save Student" : "Create Student"}</Button> : null}
-          <Link href="/students" className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-ink ring-1 ring-slate-200">Back</Link>
+          {!readOnly ? (
+            <Button type="submit">
+              <Save className="mr-2 h-4 w-4" />
+              {initial ? "Save Student" : "Create Student"}
+            </Button>
+          ) : null}
+          <Link href="/students" className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-[#213343] shadow-sm ring-1 ring-[#eadacc] transition hover:bg-[#fff6ef] dark:bg-white/[0.06] dark:text-slate-100 dark:ring-white/10 dark:hover:bg-white/[0.1]">
+            Back
+          </Link>
           {!readOnly && initial ? (
             <Button type="button" className="bg-rose-600 text-white hover:bg-rose-700" onClick={handleDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </Button>
           ) : null}
-          {status ? <p className="self-center text-sm text-slate-500">{status}</p> : null}
+          {status ? <p className="self-center text-sm font-medium text-slate-500">{status}</p> : null}
         </div>
-      </form>
-    </div>
+      </section>
+    </form>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Download, Plus, Printer, Trash2 } from "lucide-react";
 import {
   airplaneOutline,
@@ -16,6 +17,8 @@ import {
   megaphoneOutline
 } from "ionicons/icons";
 import { IonIcon } from "@/components/ui/ion-icon";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { CONSULTATION_FEE } from "@/lib/finance";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { AppRole, ExpenseCategory, ExpensePaymentMethod, ExpenseRecord } from "@/lib/types";
 
@@ -28,6 +31,8 @@ type DocumentLineItem = {
   quantity: string;
   unitPrice: string;
 };
+
+const ITEMS_PER_PAGE = 10;
 
 const legacyExpenseCategories: Record<ExpenseCategory, string> = {
   rent: "🏢 Rent & Office",
@@ -57,6 +62,19 @@ const expenseCategories: Record<ExpenseCategory, { label: string; icon: string }
 
 const paymentMethodOptions: ExpensePaymentMethod[] = ["cash", "mpesa", "bank", "card"];
 
+function documentNumber(kind: DocumentKind) {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const time = now.toTimeString().slice(0, 5).replace(":", "");
+  return `${kind === "invoice" ? "INV" : "REC"}-${date}-${time}`;
+}
+
+function addDays(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export function FinancialToolsManager({
   startDate,
   endDate,
@@ -85,6 +103,7 @@ export function FinancialToolsManager({
   creditRecords: Array<{
     id: string;
     full_name: string;
+    email: string;
     phone: string | null;
     amount_owed: number;
     payment_due_date: string | null;
@@ -108,6 +127,8 @@ export function FinancialToolsManager({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [creditPage, setCreditPage] = useState(0);
+  const [expensesPage, setExpensesPage] = useState(0);
   const [filters, setFilters] = useState({ startDate, endDate });
   const [form, setForm] = useState({
     category: "marketing" as ExpenseCategory,
@@ -120,9 +141,9 @@ export function FinancialToolsManager({
   });
   const [financeDocument, setFinanceDocument] = useState({
     kind: "invoice" as DocumentKind,
-    number: `INV-${new Date().getFullYear()}-001`,
+    number: documentNumber("invoice"),
     issueDate: new Date().toISOString().slice(0, 10),
-    dueDate: "",
+    dueDate: addDays(new Date().toISOString().slice(0, 10), 7),
     clientName: "",
     clientEmail: "",
     clientPhone: "",
@@ -137,9 +158,21 @@ export function FinancialToolsManager({
       id: "item-1",
       description: "Consultation service",
       quantity: "1",
-      unitPrice: "40000"
+      unitPrice: String(CONSULTATION_FEE)
     }
   ]);
+  const creditPageCount = Math.max(1, Math.ceil(creditRecords.length / ITEMS_PER_PAGE));
+  const safeCreditPage = Math.min(creditPage, creditPageCount - 1);
+  const paginatedCreditRecords = creditRecords.slice(
+    safeCreditPage * ITEMS_PER_PAGE,
+    safeCreditPage * ITEMS_PER_PAGE + ITEMS_PER_PAGE
+  );
+  const expensesPageCount = Math.max(1, Math.ceil(expenses.length / ITEMS_PER_PAGE));
+  const safeExpensesPage = Math.min(expensesPage, expensesPageCount - 1);
+  const paginatedExpenses = expenses.slice(
+    safeExpensesPage * ITEMS_PER_PAGE,
+    safeExpensesPage * ITEMS_PER_PAGE + ITEMS_PER_PAGE
+  );
 
   const subtotal = lineItems.reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
@@ -153,7 +186,6 @@ export function FinancialToolsManager({
 
   function showFinanceDocumentTab(tab: "invoices" | "receipts") {
     const kind: DocumentKind = tab === "invoices" ? "invoice" : "receipt";
-    const prefix = kind === "invoice" ? "INV" : "REC";
 
     setActiveTab(tab);
     setFinanceDocument((current) => ({
@@ -161,7 +193,7 @@ export function FinancialToolsManager({
       kind,
       number:
         current.number === "" || current.number.startsWith(kind === "invoice" ? "REC" : "INV")
-          ? `${prefix}-${new Date().getFullYear()}-001`
+          ? documentNumber(kind)
           : current.number,
       notes:
         current.kind === kind
@@ -177,6 +209,32 @@ export function FinancialToolsManager({
     window.location.assign(
       `/financial-tools?start_date=${filters.startDate}&end_date=${filters.endDate}`
     );
+  }
+
+  function loadCreditRecord(studentId: string) {
+    const record = creditRecords.find((item) => item.id === studentId);
+    if (!record) return;
+
+    setFinanceDocument((current) => ({
+      ...current,
+      kind: "invoice",
+      number: current.kind === "invoice" ? current.number : documentNumber("invoice"),
+      clientName: record.full_name,
+      clientEmail: record.email,
+      clientPhone: record.phone ?? "",
+      clientAddress: "",
+      dueDate: record.payment_due_date ?? addDays(current.issueDate, 7),
+      notes: `Payment is due by ${formatDate(record.payment_due_date ?? addDays(current.issueDate, 7))}. Thank you for choosing Barak Pathways.`
+    }));
+    setLineItems([
+      {
+        id: `student-${record.id}`,
+        description: "Outstanding consultation balance",
+        quantity: "1",
+        unitPrice: String(record.amount_owed)
+      }
+    ]);
+    setActiveTab("invoices");
   }
 
   async function handleExpenseSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -330,8 +388,8 @@ export function FinancialToolsManager({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
-        <div className="border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)]">
+      <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638]">
+        <div className="border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)]">
           <h1 className="font-serif text-3xl">Financial Management Tools</h1>
           <p className="mt-2 text-sm text-white/70">
             Complete financial tracking: credit, cash flow, expenses, and payment reminders.
@@ -359,7 +417,7 @@ export function FinancialToolsManager({
             <MetricCard label="Current Receivables" value={formatCurrency(metrics.currentReceivables)} sub="Outstanding - Overdue" />
           </div>
 
-          <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-white/10">
+          <div className="flex flex-wrap gap-2 border-b border-[#eadacc] dark:border-white/10">
             {canViewFullFinancialTools ? (
               <>
                 <TabButton active={activeTab === "cashflow"} onClick={() => showTab("cashflow")}>Cash Flow</TabButton>
@@ -376,14 +434,14 @@ export function FinancialToolsManager({
 
           {canViewFullFinancialTools && activeTab === "cashflow" ? (
             <div className="space-y-6">
-              <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-[#eadacc] bg-[#fff6ef] px-5 py-4 dark:border-white/10 dark:bg-white/[0.04]">
                 <label className="text-sm text-slate-600 dark:text-slate-300">
                   <span className="mb-2 block font-medium text-ink dark:text-white">From</span>
                   <input
                     type="date"
                     value={filters.startDate}
                     onChange={(event) => setFilters((current) => ({ ...current, startDate: event.target.value }))}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                    className="rounded-xl border border-[#eadacc] bg-white px-4 py-2.5 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
                   />
                 </label>
                 <label className="text-sm text-slate-600 dark:text-slate-300">
@@ -392,7 +450,7 @@ export function FinancialToolsManager({
                     type="date"
                     value={filters.endDate}
                     onChange={(event) => setFilters((current) => ({ ...current, endDate: event.target.value }))}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                    className="rounded-xl border border-[#eadacc] bg-white px-4 py-2.5 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
                   />
                 </label>
                 <button type="button" onClick={filterCashFlow} className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">
@@ -406,9 +464,9 @@ export function FinancialToolsManager({
                 <MetricCard label="Net Cash Flow" value={formatCurrency(metrics.netProfit)} accent={metrics.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"} />
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <div className="overflow-x-auto rounded-2xl border border-[#eadacc]">
                 <table className="min-w-full">
-                  <thead className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                  <thead className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                     <tr>
                       <th className="px-4 py-3">Date</th>
                       <th className="px-4 py-3">Cash In</th>
@@ -434,9 +492,21 @@ export function FinancialToolsManager({
           ) : null}
 
           {canViewFullFinancialTools && activeTab === "credit" ? (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto rounded-2xl border border-[#eadacc]">
+              {creditRecords.length > ITEMS_PER_PAGE ? (
+                <div className="border-b border-[#eadacc] bg-[#fffaf5] p-3">
+                  <PaginationControls
+                    page={safeCreditPage}
+                    pageCount={creditPageCount}
+                    total={creditRecords.length}
+                    perPage={ITEMS_PER_PAGE}
+                    onPageChange={setCreditPage}
+                    label="credit records"
+                  />
+                </div>
+              ) : null}
               <table className="min-w-full">
-                <thead className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                <thead className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                   <tr>
                     <th className="px-4 py-3">Student</th>
                     <th className="px-4 py-3">Phone</th>
@@ -448,7 +518,7 @@ export function FinancialToolsManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {creditRecords.map((student) => {
+                  {paginatedCreditRecords.map((student) => {
                     const tone =
                       student.days_overdue && student.days_overdue > 30
                         ? "bg-rose-100 text-rose-800"
@@ -464,7 +534,7 @@ export function FinancialToolsManager({
                           : "Current";
 
                     return (
-                      <tr key={student.id} className="border-b border-slate-100 hover:bg-gold/5">
+                      <tr key={student.id} className="border-b border-[#f0dfd0] hover:bg-gold/5">
                         <td className="px-4 py-3 font-semibold text-ink">{student.full_name}</td>
                         <td className="px-4 py-3">{student.phone ?? "-"}</td>
                         <td className="px-4 py-3 font-semibold">{formatCurrency(student.amount_owed)}</td>
@@ -493,13 +563,13 @@ export function FinancialToolsManager({
 
           {canViewFullFinancialTools && activeTab === "expenses" ? (
             <div className="space-y-8">
-              <form onSubmit={handleExpenseSubmit} className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-2">
+              <form onSubmit={handleExpenseSubmit} className="grid gap-4 rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-2">
                 <label className="text-sm text-slate-600">
                   <span className="mb-2 block font-medium text-ink">Category</span>
                   <select
                     value={form.category}
                     onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as ExpenseCategory }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3"
                   >
                     {Object.entries(expenseCategories).map(([key, label]) => (
                       <option key={key} value={key}>
@@ -513,7 +583,7 @@ export function FinancialToolsManager({
                   <input
                     value={form.amount}
                     onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3"
                     placeholder="0.00"
                   />
                 </label>
@@ -522,7 +592,7 @@ export function FinancialToolsManager({
                   <textarea
                     value={form.description}
                     onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3"
                     rows={2}
                     placeholder="What was this expense for?"
                   />
@@ -533,7 +603,7 @@ export function FinancialToolsManager({
                     type="date"
                     value={form.expense_date}
                     onChange={(event) => setForm((current) => ({ ...current, expense_date: event.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3"
                   />
                 </label>
                 <label className="text-sm text-slate-600">
@@ -541,7 +611,7 @@ export function FinancialToolsManager({
                   <select
                     value={form.payment_method}
                     onChange={(event) => setForm((current) => ({ ...current, payment_method: event.target.value as ExpensePaymentMethod | "" }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3"
                   >
                     <option value="">Select method...</option>
                     {paymentMethodOptions.map((method) => (
@@ -556,7 +626,7 @@ export function FinancialToolsManager({
                   <input
                     value={form.receipt_number}
                     onChange={(event) => setForm((current) => ({ ...current, receipt_number: event.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3"
                     placeholder="INV-001"
                   />
                 </label>
@@ -565,7 +635,7 @@ export function FinancialToolsManager({
                   <input
                     value={form.vendor}
                     onChange={(event) => setForm((current) => ({ ...current, vendor: event.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3"
                     placeholder="Who was paid?"
                   />
                 </label>
@@ -578,12 +648,12 @@ export function FinancialToolsManager({
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {expensesByCategory.length === 0 ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] px-4 py-6 text-sm text-slate-500 md:col-span-2 xl:col-span-4">
                     No expenses recorded yet.
                   </div>
                 ) : (
                   expensesByCategory.map((item) => (
-                    <div key={item.category} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div key={item.category} className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-4">
                       <p className="text-xl font-semibold text-ink">{formatCurrency(item.amount)}</p>
                       <p className="mt-1 flex items-center gap-2 text-sm text-slate-500">
                         <IonIcon icon={expenseCategories[item.category].icon} className="h-4 w-4" />
@@ -594,9 +664,21 @@ export function FinancialToolsManager({
                 )}
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <div className="overflow-x-auto rounded-2xl border border-[#eadacc]">
+                {expenses.length > ITEMS_PER_PAGE ? (
+                  <div className="border-b border-[#eadacc] bg-[#fffaf5] p-3">
+                    <PaginationControls
+                      page={safeExpensesPage}
+                      pageCount={expensesPageCount}
+                      total={expenses.length}
+                      perPage={ITEMS_PER_PAGE}
+                      onPageChange={setExpensesPage}
+                      label="expenses"
+                    />
+                  </div>
+                ) : null}
                 <table className="min-w-full">
-                  <thead className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                  <thead className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                     <tr>
                       <th className="px-4 py-3">Date</th>
                       <th className="px-4 py-3">Category</th>
@@ -614,8 +696,8 @@ export function FinancialToolsManager({
                         </td>
                       </tr>
                     ) : null}
-                    {expenses.slice(0, 50).map((expense) => (
-                      <tr key={expense.id} className="border-b border-slate-100 hover:bg-gold/5">
+                    {paginatedExpenses.map((expense) => (
+                      <tr key={expense.id} className="border-b border-[#f0dfd0] hover:bg-gold/5">
                         <td className="px-4 py-3">{formatDate(expense.expense_date)}</td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
@@ -649,7 +731,7 @@ export function FinancialToolsManager({
           {activeTab === "invoices" || activeTab === "receipts" ? (
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
               <div className="space-y-5">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="mb-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">
                       {financeDocument.kind === "invoice" ? "Invoice Generator" : "Receipt Generator"}
@@ -669,7 +751,7 @@ export function FinancialToolsManager({
                       <input
                         value={financeDocument.number}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, number: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         placeholder="INV-2026-001"
                       />
                     </label>
@@ -679,7 +761,7 @@ export function FinancialToolsManager({
                         type="date"
                         value={financeDocument.issueDate}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, issueDate: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
                       />
                     </label>
                     <label className="text-sm text-slate-600 dark:text-slate-300">
@@ -690,13 +772,40 @@ export function FinancialToolsManager({
                         type="date"
                         value={financeDocument.dueDate}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, dueDate: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
                       />
                     </label>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                {activeTab === "invoices" && creditRecords.length > 0 ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/25 dark:bg-amber-500/10">
+                    <h2 className="text-base font-semibold text-ink dark:text-white">Create From Student Balance</h2>
+                    <label className="mt-4 block text-sm text-slate-600 dark:text-slate-300">
+                      <span className="mb-2 block font-medium text-ink dark:text-white">Outstanding Student</span>
+                      <select
+                        defaultValue=""
+                        onChange={(event) => {
+                          if (event.target.value) {
+                            loadCreditRecord(event.target.value);
+                            event.currentTarget.value = "";
+                          }
+                        }}
+                        className="w-full rounded-xl border border-amber-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                      >
+                        <option value="">Select a student balance...</option>
+                        {creditRecords.map((record) => (
+                          <option key={record.id} value={record.id}>
+                            {record.full_name} - {formatCurrency(record.amount_owed)}
+                            {record.payment_due_date ? ` due ${formatDate(record.payment_due_date)}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+
+                <div className="rounded-2xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
                   <h2 className="text-base font-semibold text-ink dark:text-white">Client Details</h2>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <label className="text-sm text-slate-600 dark:text-slate-300">
@@ -704,7 +813,7 @@ export function FinancialToolsManager({
                       <input
                         value={financeDocument.clientName}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, clientName: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         placeholder="Student or company name"
                       />
                     </label>
@@ -713,7 +822,7 @@ export function FinancialToolsManager({
                       <input
                         value={financeDocument.clientPhone}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, clientPhone: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         placeholder="+254..."
                       />
                     </label>
@@ -723,7 +832,7 @@ export function FinancialToolsManager({
                         type="email"
                         value={financeDocument.clientEmail}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, clientEmail: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         placeholder="client@example.com"
                       />
                     </label>
@@ -732,14 +841,14 @@ export function FinancialToolsManager({
                       <input
                         value={financeDocument.clientAddress}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, clientAddress: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         placeholder="City, country"
                       />
                     </label>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="rounded-2xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-base font-semibold text-ink dark:text-white">Line Items</h2>
                     <button
@@ -754,24 +863,24 @@ export function FinancialToolsManager({
 
                   <div className="mt-4 space-y-3">
                     {lineItems.map((item) => (
-                      <div key={item.id} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-[1fr_90px_130px_42px]">
+                      <div key={item.id} className="grid gap-3 rounded-xl border border-[#eadacc] bg-[#fff6ef] p-3 dark:border-white/10 dark:bg-white/[0.04] md:grid-cols-[1fr_90px_130px_42px]">
                         <input
                           value={item.description}
                           onChange={(event) => updateLineItem(item.id, "description", event.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                          className="rounded-lg border border-[#eadacc] bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                           placeholder="Service or product"
                         />
                         <input
                           value={item.quantity}
                           onChange={(event) => updateLineItem(item.id, "quantity", event.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                          className="rounded-lg border border-[#eadacc] bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                           inputMode="decimal"
                           placeholder="Qty"
                         />
                         <input
                           value={item.unitPrice}
                           onChange={(event) => updateLineItem(item.id, "unitPrice", event.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                          className="rounded-lg border border-[#eadacc] bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                           inputMode="decimal"
                           placeholder="Unit price"
                         />
@@ -795,7 +904,7 @@ export function FinancialToolsManager({
                       <input
                         value={financeDocument.taxRate}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, taxRate: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         inputMode="decimal"
                       />
                     </label>
@@ -804,7 +913,7 @@ export function FinancialToolsManager({
                       <input
                         value={financeDocument.paymentMethod}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, paymentMethod: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         placeholder="M-Pesa, Bank, Cash"
                       />
                     </label>
@@ -813,7 +922,7 @@ export function FinancialToolsManager({
                       <input
                         value={financeDocument.paymentReference}
                         onChange={(event) => setFinanceDocument((current) => ({ ...current, paymentReference: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                        className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                         placeholder="Transaction ID"
                       />
                     </label>
@@ -823,7 +932,7 @@ export function FinancialToolsManager({
                     <textarea
                       value={financeDocument.notes}
                       onChange={(event) => setFinanceDocument((current) => ({ ...current, notes: event.target.value }))}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                      className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                       rows={3}
                     />
                   </label>
@@ -835,7 +944,7 @@ export function FinancialToolsManager({
                   <button
                     type="button"
                     onClick={printGeneratedDocument}
-                    className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-gold dark:text-ink dark:hover:bg-[#e7b95f]"
+                    className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#2f495c] dark:bg-gold dark:text-ink dark:hover:bg-[#e7b95f]"
                   >
                     <Printer className="h-4 w-4" />
                     Print
@@ -852,7 +961,7 @@ export function FinancialToolsManager({
 
                 <div
                   id="finance-document-preview"
-                  className="overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-panel"
+                  className="overflow-hidden border border-[#eadacc] bg-white text-slate-900 shadow-panel"
                 >
                   {financeDocument.kind === "invoice" ? (
                     <div className="mx-auto min-h-[960px] max-w-[840px] bg-white px-10 py-10 font-sans">
@@ -878,7 +987,7 @@ export function FinancialToolsManager({
                             <p>{financeDocument.clientAddress || "Client address"}</p>
                           </div>
                         </div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm">
+                        <div className="rounded-lg border border-[#eadacc] bg-[#fff6ef] p-5 text-sm">
                           <DocumentMeta label="Invoice No." value={financeDocument.number || "Draft"} />
                           <DocumentMeta label="Issue Date" value={financeDocument.issueDate ? formatDate(financeDocument.issueDate) : "-"} />
                           <DocumentMeta label="Due Date" value={financeDocument.dueDate ? formatDate(financeDocument.dueDate) : "-"} />
@@ -888,7 +997,7 @@ export function FinancialToolsManager({
                       <DocumentItemsTable lineItems={lineItems} />
 
                       <div className="mt-8 grid gap-8 md:grid-cols-[1fr_300px]">
-                        <div className="rounded-lg border border-slate-200 bg-[#fbfaf7] p-5 text-sm leading-6 text-slate-600">
+                        <div className="rounded-lg border border-[#eadacc] bg-[#fbfaf7] p-5 text-sm leading-6 text-slate-600">
                           <p className="font-bold text-[#18364a]">Payment Details</p>
                           <p className="mt-3">Method: {financeDocument.paymentMethod || "-"}</p>
                           <p>Reference: {financeDocument.paymentReference || "-"}</p>
@@ -897,7 +1006,7 @@ export function FinancialToolsManager({
                         <DocumentTotals subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} totalLabel="Balance Due" />
                       </div>
 
-                      <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
+                      <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadacc] pt-5 text-xs text-slate-500">
                         <span>Generated by {currentUsername ?? "Barak Pathways CRM"}</span>
                         <span>Barak Pathways - Nairobi, Kenya</span>
                       </div>
@@ -934,7 +1043,7 @@ export function FinancialToolsManager({
                       </div>
 
                       <div className="mt-8 grid gap-8 md:grid-cols-[1fr_300px]">
-                        <div className="rounded-lg border border-slate-200 bg-[#fbfaf7] p-6">
+                        <div className="rounded-lg border border-[#eadacc] bg-[#fbfaf7] p-6">
                           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#b47b29]">Received From</p>
                           <p className="mt-3 text-2xl font-bold text-[#18364a]">{financeDocument.clientName || "Client name"}</p>
                           <div className="mt-3 space-y-1 text-sm leading-6 text-slate-600">
@@ -951,7 +1060,7 @@ export function FinancialToolsManager({
                       </div>
 
                       <div className="mt-8">
-                        <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <div className="overflow-hidden rounded-lg border border-[#eadacc]">
                           <table className="min-w-full">
                             <thead className="bg-[#18364a] text-left text-xs uppercase tracking-[0.08em] text-white">
                               <tr>
@@ -967,7 +1076,7 @@ export function FinancialToolsManager({
                                 const unitPrice = Number(item.unitPrice) || 0;
                                 const amount = quantity * unitPrice;
                                 return (
-                                  <tr key={item.id} className="border-t border-slate-100">
+                                  <tr key={item.id} className="border-t border-[#f0dfd0]">
                                     <td className="px-5 py-4 text-sm font-semibold text-[#18364a]">{item.description || "Service payment"}</td>
                                     <td className="px-5 py-4 text-right text-sm text-slate-600">{quantity || "-"}</td>
                                     <td className="px-5 py-4 text-right text-sm text-slate-600">{formatCurrency(unitPrice)}</td>
@@ -981,7 +1090,7 @@ export function FinancialToolsManager({
                       </div>
 
                       <div className="mt-8 grid gap-8 md:grid-cols-[1fr_300px]">
-                        <div className="rounded-lg border border-slate-200 p-5 text-sm leading-6 text-slate-600">
+                        <div className="rounded-lg border border-[#eadacc] p-5 text-sm leading-6 text-slate-600">
                           <p className="font-bold text-[#18364a]">Payment Confirmation</p>
                           <p className="mt-3">
                             This receipt confirms that Barak Pathways has received payment from{" "}
@@ -994,7 +1103,7 @@ export function FinancialToolsManager({
                         <DocumentTotals subtotal={subtotal} taxAmount={taxAmount} grandTotal={grandTotal} totalLabel="Total Received" />
                       </div>
 
-                      <div className="mt-12 grid gap-8 border-t border-slate-200 pt-8 md:grid-cols-2">
+                      <div className="mt-12 grid gap-8 border-t border-[#eadacc] pt-8 md:grid-cols-2">
                         <div>
                           <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Authorized By</p>
                           <div className="mt-10 w-56 border-t border-slate-400 pt-3 text-sm font-semibold text-[#18364a]">
@@ -1060,7 +1169,7 @@ function MetricCard({
   accent?: string;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
       <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
       <p className={`mt-3 text-3xl font-semibold ${accent}`}>{value}</p>
       {sub ? <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{sub}</p> : null}
@@ -1070,7 +1179,7 @@ function MetricCard({
 
 function DocumentMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 border-b border-slate-200 py-2 last:border-0">
+    <div className="flex justify-between gap-4 border-b border-[#eadacc] py-2 last:border-0">
       <span className="font-semibold text-slate-500">{label}</span>
       <span className="text-right text-slate-950">{value}</span>
     </div>
@@ -1080,10 +1189,12 @@ function DocumentMeta({ label, value }: { label: string; value: string }) {
 function DocumentBrandBlock() {
   return (
     <div className="flex items-start gap-4">
-      <img
+      <Image
         src="/barak-pathways-logo.png"
         alt="Barak Pathways"
-        className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain p-1"
+        width={64}
+        height={64}
+        className="h-16 w-16 rounded-lg border border-[#eadacc] bg-white object-contain p-1"
       />
       <div>
         <p className="text-xl font-bold text-[#18364a]">Barak Pathways</p>
@@ -1100,7 +1211,7 @@ function DocumentBrandBlock() {
 
 function ReceiptInfoBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-[#eadacc] bg-white p-4">
       <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
       <p className="mt-2 break-words text-sm font-bold text-[#18364a]">{value}</p>
     </div>
@@ -1109,7 +1220,7 @@ function ReceiptInfoBox({ label, value }: { label: string; value: string }) {
 
 function DocumentItemsTable({ lineItems }: { lineItems: DocumentLineItem[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
+    <div className="overflow-hidden rounded-lg border border-[#eadacc]">
       <table className="min-w-full">
         <thead className="bg-[#18364a] text-left text-xs uppercase tracking-[0.08em] text-white">
           <tr>
@@ -1124,7 +1235,7 @@ function DocumentItemsTable({ lineItems }: { lineItems: DocumentLineItem[] }) {
             const quantity = Number(item.quantity) || 0;
             const unitPrice = Number(item.unitPrice) || 0;
             return (
-              <tr key={item.id} className="border-t border-slate-100">
+              <tr key={item.id} className="border-t border-[#f0dfd0]">
                 <td className="px-4 py-4 text-sm font-semibold text-[#18364a]">{item.description || "Line item"}</td>
                 <td className="px-4 py-4 text-right text-sm text-slate-600">{quantity || "-"}</td>
                 <td className="px-4 py-4 text-right text-sm text-slate-600">{formatCurrency(unitPrice)}</td>
@@ -1150,7 +1261,7 @@ function DocumentTotals({
   totalLabel: string;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+    <div className="space-y-3 rounded-lg border border-[#eadacc] bg-white p-5">
       <div className="flex justify-between text-sm">
         <span className="text-slate-500">Subtotal</span>
         <span className="font-semibold">{formatCurrency(subtotal)}</span>
@@ -1159,7 +1270,7 @@ function DocumentTotals({
         <span className="text-slate-500">Tax</span>
         <span className="font-semibold">{formatCurrency(taxAmount)}</span>
       </div>
-      <div className="border-t border-slate-200 pt-4">
+      <div className="border-t border-[#eadacc] pt-4">
         <div className="flex justify-between gap-4 text-lg font-bold text-[#18364a]">
           <span>{totalLabel}</span>
           <span>{formatCurrency(grandTotal)}</span>

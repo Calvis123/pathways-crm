@@ -36,7 +36,7 @@ export default async function HrTeamPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {roleCounts.map((item) => (
-            <div key={item.role} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-[#0d1729]">
+            <div key={item.role} className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-[#182638]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                 {roleLabel(item.role)}
               </p>
@@ -46,12 +46,12 @@ export default async function HrTeamPage() {
           ))}
         </div>
 
-        <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+        <Card className="dark:border-white/10 dark:bg-[#182638]">
           <CardHeader title="Team Directory" description="A read-only HR view of CRM users and work ownership." />
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-[0.14em] text-slate-400 dark:border-white/10">
+                <tr className="border-b border-[#f0dfd0] text-left text-xs uppercase tracking-[0.14em] text-slate-400 dark:border-white/10">
                   <th className="px-3 py-3">Name</th>
                   <th className="px-3 py-3">Email</th>
                   <th className="px-3 py-3">Role</th>
@@ -63,7 +63,7 @@ export default async function HrTeamPage() {
               </thead>
               <tbody>
                 {teamRows.map(({ user, ownedStudents, openTasks: userTasks }) => (
-                  <tr key={user.id} className="border-b border-slate-100 dark:border-white/10">
+                  <tr key={user.id} className="border-b border-[#f0dfd0] dark:border-white/10">
                     <td className="px-3 py-4 font-medium text-ink dark:text-white">{user.full_name}</td>
                     <td className="px-3 py-4 text-slate-500 dark:text-slate-300">{user.email}</td>
                     <td className="px-3 py-4 text-slate-600 dark:text-slate-300">{roleLabel(user.role)}</td>
@@ -84,12 +84,12 @@ export default async function HrTeamPage() {
           </div>
         </Card>
 
-        <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+        <Card className="dark:border-white/10 dark:bg-[#182638]">
           <CardHeader title="HR Permission View" description="The routes HR can oversee compared with other CRM roles." />
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-[0.14em] text-slate-400 dark:border-white/10">
+                <tr className="border-b border-[#f0dfd0] text-left text-xs uppercase tracking-[0.14em] text-slate-400 dark:border-white/10">
                   <th className="px-3 py-3">Area</th>
                   <th className="px-3 py-3">Route</th>
                   <th className="px-3 py-3">HR</th>
@@ -98,7 +98,7 @@ export default async function HrTeamPage() {
               </thead>
               <tbody>
                 {permissionMatrix.map((entry) => (
-                  <tr key={entry.prefix} className="border-b border-slate-100 dark:border-white/10">
+                  <tr key={entry.prefix} className="border-b border-[#f0dfd0] dark:border-white/10">
                     <td className="px-3 py-4 font-medium text-ink dark:text-white">{entry.label}</td>
                     <td className="px-3 py-4 text-slate-500 dark:text-slate-300">{entry.prefix}</td>
                     <td className="px-3 py-4">

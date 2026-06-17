@@ -132,7 +132,7 @@ export default async function SystemMonitorPage() {
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Operational Queues"
               description="The main work areas where response time and follow-through matter most."
@@ -169,7 +169,7 @@ export default async function SystemMonitorPage() {
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Most Active Team Members"
               description="Recent CRM activity based on audit log volume."
@@ -179,7 +179,7 @@ export default async function SystemMonitorPage() {
                 mostActiveUsers.map((item, index) => (
                   <div
                     key={item.actor}
-                    className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]"
+                    className="flex items-center justify-between rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]"
                   >
                     <div>
                       <p className="font-medium text-ink dark:text-white">
@@ -187,7 +187,7 @@ export default async function SystemMonitorPage() {
                       </p>
                       <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Latest activity {formatDate(item.latest, { timeStyle: "short" })}</p>
                     </div>
-                    <span className="rounded-full bg-[#173042] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-white">
+                    <span className="rounded-full bg-[#213343] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-white">
                       {item.count} actions
                     </span>
                   </div>
@@ -200,7 +200,7 @@ export default async function SystemMonitorPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Live Alerts"
               description="Short operational summaries for leadership and admin review."
@@ -234,18 +234,18 @@ export default async function SystemMonitorPage() {
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Recent System Activity"
               description="Latest actions recorded in the audit trail."
             />
             <div className="space-y-3">
               {auditLogs.slice(0, 10).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+                <div key={item.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.05]">
                   <p className="font-medium text-ink dark:text-white">{item.action}</p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
                     {item.record_label ?? item.table_name}
-                    {item.actor_name ? ` · ${item.actor_name}` : ""}
+                    {item.actor_name ? ` - ${item.actor_name}` : ""}
                   </p>
                   <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                     {formatDate(item.created_at, { dateStyle: "medium", timeStyle: "short" })}
@@ -255,7 +255,7 @@ export default async function SystemMonitorPage() {
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Coverage Snapshot"
               description="A quick picture of the current live records in the CRM."
@@ -287,10 +287,10 @@ function MetricCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-[#eadccd] bg-white/90 p-5 shadow-[0_18px_32px_rgba(33,51,67,0.08)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_18px_32px_rgba(2,6,23,0.2)]">
+    <div className="rounded-xl border border-[#eadccd] bg-white/90 p-5 shadow-[0_18px_32px_rgba(33,51,67,0.08)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_18px_32px_rgba(2,6,23,0.2)]">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{label}</p>
-        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#173042] text-gold dark:bg-[#ff7a59]/15 dark:text-[#ffb89e]">{icon}</div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#213343] text-gold dark:bg-[#ff7a59]/15 dark:text-[#ffb89e]">{icon}</div>
       </div>
       <p className="mt-4 text-3xl font-semibold tracking-tight text-ink dark:text-white">{value}</p>
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">{detail}</p>
@@ -321,7 +321,7 @@ function QueueCard({
           : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200";
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
       <div className="flex items-center justify-between">
         <p className="font-semibold text-ink dark:text-white">{title}</p>
         <div className={`flex h-10 w-10 items-center justify-center rounded-2xl border ${toneClass}`}>{icon}</div>
@@ -334,7 +334,7 @@ function QueueCard({
 
 function CoverageRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="flex items-center justify-between rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
       <span>{label}</span>
       <span className="font-semibold text-ink dark:text-white">{value}</span>
     </div>
@@ -343,7 +343,7 @@ function CoverageRow({ label, value }: { label: string; value: number }) {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
+    <div className="rounded-2xl border border-dashed border-[#eadacc] bg-[#fffaf5] px-4 py-8 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
       {message}
     </div>
   );

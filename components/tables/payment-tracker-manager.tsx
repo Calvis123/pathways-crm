@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type StatusFilter = "all" | "pending" | "partial" | "paid";
 
@@ -19,6 +20,8 @@ type TrackerStudent = {
   payment_status: string;
   payment_date: string | null;
 };
+
+const ITEMS_PER_PAGE = 10;
 
 function getRowClass(days: number) {
   if (days >= 15) return "border-l-4 border-l-rose-500";
@@ -53,6 +56,7 @@ export function PaymentTrackerManager({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [university, setUniversity] = useState(universityFilter);
+  const [page, setPage] = useState(0);
   const [modal, setModal] = useState<{
     studentId: string;
     studentName: string;
@@ -65,6 +69,9 @@ export function PaymentTrackerManager({
     payment_method: "" as "" | "mpesa" | "bank" | "cash" | "card",
     payment_notes: ""
   });
+  const pageCount = Math.max(1, Math.ceil(students.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedStudents = students.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   const csvContent = useMemo(() => {
     const header = [
@@ -180,8 +187,8 @@ export function PaymentTrackerManager({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
-        <div className="flex flex-col gap-4 border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)] lg:flex-row lg:items-center lg:justify-between">
+      <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638]">
+        <div className="flex flex-col gap-4 border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)] lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="font-serif text-3xl">Payment Tracker</h1>
             <p className="mt-2 text-sm text-white/70">Track outstanding payments for visa-approved students.</p>
@@ -222,7 +229,7 @@ export function PaymentTrackerManager({
             <StatCard label="Collection Rate" value={`${stats.collectionRate.toFixed(1)}%`} tone="gold" />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
+          <div className="rounded-2xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
             <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <h2 className="font-serif text-xl text-ink dark:text-white">Payment Tracker (Visa Approved Students)</h2>
               <button
@@ -239,7 +246,7 @@ export function PaymentTrackerManager({
                   key={status}
                   type="button"
                   onClick={() => applyFilters(status, university)}
-                  className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${statusFilter === status ? "border-gold bg-gold text-ink dark:border-[#ffb89e] dark:bg-[#ff7a59] dark:text-white" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-gold hover:text-gold dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:text-[#ffb89e]"}`}
+                  className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${statusFilter === status ? "border-gold bg-gold text-ink dark:border-[#ffb89e] dark:bg-[#ff7a59] dark:text-white" : "border-[#eadacc] bg-[#fff6ef] text-slate-700 hover:border-gold hover:text-gold dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:text-[#ffb89e]"}`}
                 >
                   {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)}
                 </button>
@@ -255,12 +262,12 @@ export function PaymentTrackerManager({
                   }
                 }}
                 placeholder="Filter by university"
-                className="min-w-[220px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100 dark:placeholder:text-slate-400"
+                className="min-w-[220px] rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-2 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100 dark:placeholder:text-slate-400"
               />
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+          <div className="overflow-x-auto rounded-2xl border border-[#eadacc] dark:border-white/10">
             {students.length === 0 ? (
               <div className="px-6 py-16 text-center text-slate-500 dark:text-slate-300">
                 <div className="text-5xl text-gold/70">✓</div>
@@ -268,21 +275,34 @@ export function PaymentTrackerManager({
                 <p className="mt-2 text-sm">No students with visa approval match the current filters.</p>
               </div>
             ) : (
-              <table className="min-w-full border-collapse">
-                <thead>
-                  <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Student Name</th>
-                    <th className="px-4 py-3">University</th>
-                    <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3">Paid</th>
-                    <th className="px-4 py-3">Balance</th>
-                    <th className="px-4 py-3">Days Since Approval</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((student) => {
+              <>
+                {students.length > ITEMS_PER_PAGE ? (
+                  <div className="border-b border-[#eadacc] bg-[#fffaf5] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                    <PaginationControls
+                      page={safePage}
+                      pageCount={pageCount}
+                      total={students.length}
+                      perPage={ITEMS_PER_PAGE}
+                      onPageChange={setPage}
+                      label="students"
+                    />
+                  </div>
+                ) : null}
+                <table className="min-w-full border-collapse">
+                  <thead>
+                    <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Student Name</th>
+                      <th className="px-4 py-3">University</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Paid</th>
+                      <th className="px-4 py-3">Balance</th>
+                      <th className="px-4 py-3">Days Since Approval</th>
+                      <th className="px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedStudents.map((student) => {
                     const badge = getRowLabel(student.days_since_approval);
                     return (
                       <tr key={student.id} className={`${getRowClass(student.days_since_approval)} hover:bg-gold/5 dark:hover:bg-white/[0.04]`}>
@@ -328,17 +348,18 @@ export function PaymentTrackerManager({
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
+                    })}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         </div>
       </section>
 
       {modal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setModal(null)}>
-          <div className="w-full max-w-lg rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-2xl dark:border-white/10 dark:bg-[#0f1b31]" onClick={(event) => event.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#213343]/60 p-4 backdrop-blur-sm" onClick={() => setModal(null)}>
+          <div className="w-full max-w-lg rounded-[1.75rem] border border-[#eadacc] bg-white p-8 shadow-2xl dark:border-white/10 dark:bg-[#182638]" onClick={(event) => event.stopPropagation()}>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-serif text-2xl text-ink dark:text-white">Record Payment</h2>
               <button type="button" onClick={() => setModal(null)} className="text-2xl text-slate-400 dark:text-slate-500">
@@ -348,7 +369,7 @@ export function PaymentTrackerManager({
             <form className="space-y-4" onSubmit={submitPayment}>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-white">Student</span>
-                <input value={modal.studentName} readOnly className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
+                <input value={modal.studentName} readOnly className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-white">Amount Paid (KES)</span>
@@ -359,7 +380,7 @@ export function PaymentTrackerManager({
                   step="100"
                   value={form.amount_paid}
                   onChange={(event) => setForm((current) => ({ ...current, amount_paid: event.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                  className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                 />
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
@@ -369,7 +390,7 @@ export function PaymentTrackerManager({
                   required
                   value={form.payment_date}
                   onChange={(event) => setForm((current) => ({ ...current, payment_date: event.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                  className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
                 />
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
@@ -378,7 +399,7 @@ export function PaymentTrackerManager({
                   required
                   value={form.payment_method}
                   onChange={(event) => setForm((current) => ({ ...current, payment_method: event.target.value as typeof current.payment_method }))}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                  className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                 >
                   <option value="">Select method...</option>
                   <option value="mpesa">M-PESA</option>
@@ -394,14 +415,14 @@ export function PaymentTrackerManager({
                   value={form.payment_notes}
                   onChange={(event) => setForm((current) => ({ ...current, payment_notes: event.target.value }))}
                   placeholder="Any additional notes..."
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
+                  className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
                 />
               </label>
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={isPending} className="flex-1 rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
                   Save Payment
                 </button>
-                <button type="button" onClick={() => setModal(null)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200">
+                <button type="button" onClick={() => setModal(null)} className="rounded-xl border border-[#eadacc] px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200">
                   Cancel
                 </button>
               </div>
@@ -430,7 +451,7 @@ function StatCard({
   } as const;
 
   return (
-    <div className="flex items-center gap-5 rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="flex items-center gap-5 rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
       <div className={`flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-bold ${tones[tone]}`}>
         •
       </div>

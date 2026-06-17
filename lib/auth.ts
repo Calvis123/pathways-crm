@@ -20,22 +20,6 @@ import {
   roleLabel
 } from "@/lib/auth-shared";
 
-export interface DemoUser extends SessionUser {
-  email: string;
-  password: string;
-}
-
-export const demoUsers: DemoUser[] = [
-  { username: "admin", email: "admin@barakpathways.com", password: "barak123", full_name: "Amina Admin", role: "admin" },
-  { username: "hr", email: "hr@barakpathways.com", password: "barak123", full_name: "Hannah HR", role: "hr" },
-  { username: "consultant", email: "consultant@barakpathways.com", password: "barak123", full_name: "Caleb Consultant", role: "consultant" },
-  { username: "marketing", email: "marketing@barakpathways.com", password: "barak123", full_name: "Maya Marketing", role: "marketing" },
-  { username: "operations", email: "operations@barakpathways.com", password: "barak123", full_name: "Oscar Operations", role: "operations" },
-  { username: "employee", email: "employee@barakpathways.com", password: "barak123", full_name: "Evelyn Employee", role: "employee" },
-  { username: "ielts", email: "ielts@barakpathways.com", password: "barak123", full_name: "Ian IELTS", role: "ielts_trainer" }
-];
-
-
 const getCurrentSessionCached = cache(async () => {
   const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
@@ -56,28 +40,31 @@ export async function getCurrentStudentPortalSession() {
   return getCurrentStudentPortalSessionCached();
 }
 
-export function authenticateDemoUser(email: string, password: string) {
-  const normalized = email.trim().toLowerCase();
-  return (
-    demoUsers.find((user) => user.email === normalized && user.password === password) ?? null
-  );
-}
-
 export async function authenticateUser(email: string, password: string) {
   const normalized = email.trim().toLowerCase();
 
   if (!hasSupabaseEnv()) {
-    return authenticateDemoUser(normalized, password);
+    throw new Error("Supabase is not configured. Add your Supabase environment variables before signing in.");
   }
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("users")
-    .select("username, full_name, role, status, password, email")
-    .eq("email", normalized)
-    .maybeSingle();
+  let result;
 
-  if (error) throw error;
+  try {
+    result = await supabase
+      .from("users")
+      .select("username, full_name, role, status, password, email")
+      .eq("email", normalized)
+      .maybeSingle();
+  } catch (error) {
+    throw new Error("Could not reach the user database. Check your Supabase connection and try again.");
+  }
+
+  const { data, error } = result;
+
+  if (error) {
+    throw new Error(error.message || "Could not read the user account from Supabase.");
+  }
 
   if (!data || data.status !== "active" || !data.password) {
     return null;

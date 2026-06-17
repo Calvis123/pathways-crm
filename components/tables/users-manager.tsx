@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { AppRole, AppUserRecord } from "@/lib/types";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 const roleLabels: Record<AppUserRecord["role"], string> = {
   employee: "Super Admin",
@@ -25,7 +26,7 @@ const roleDescriptions: Record<AppUserRecord["role"], string> = {
 };
 
 const roleBadgeTone: Record<AppUserRecord["role"], string> = {
-  employee: "bg-[#0f172a] text-gold",
+  employee: "bg-[linear-gradient(135deg,#213343,#3f5a68)] text-gold",
   admin: "bg-sky-500 text-white",
   hr: "bg-teal-500 text-white",
   operations: "bg-emerald-500 text-white",
@@ -44,6 +45,8 @@ const allRoles: AppUserRecord["role"][] = [
   "ielts_trainer"
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 export function UsersManager({
   users,
   currentUsername,
@@ -59,11 +62,15 @@ export function UsersManager({
   const [success, setSuccess] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<{ id: string; username: string } | null>(null);
   const [editTarget, setEditTarget] = useState<AppUserRecord | null>(null);
+  const [page, setPage] = useState(0);
 
   const sortedUsers = useMemo(
     () => [...users].sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [users]
   );
+  const pageCount = Math.max(1, Math.ceil(sortedUsers.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedUsers = sortedUsers.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   function clearMessages() {
     setError(null);
@@ -171,8 +178,8 @@ export function UsersManager({
   }
 
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729] dark:shadow-[0_22px_70px_rgba(2,6,23,0.32)]">
-      <div className="border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)]">
+    <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638] dark:shadow-[0_22px_70px_rgba(2,6,23,0.32)]">
+      <div className="border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)]">
         <h1 className="font-serif text-3xl">User Management</h1>
         <p className="mt-2 text-sm text-white/70">Manage users, edit access profiles, and review role permissions.</p>
       </div>
@@ -181,7 +188,7 @@ export function UsersManager({
         {error ? <Banner tone="error" message={error} /> : null}
         {success ? <Banner tone="success" message={success} /> : null}
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
+        <section className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
           <h2 className="mb-5 font-serif text-2xl text-ink dark:text-slate-50">Add New User</h2>
           <form action={handleCreateUser} className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -201,20 +208,32 @@ export function UsersManager({
           </form>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
+        <section className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h2 className="font-serif text-2xl text-ink dark:text-slate-50">Current Users</h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Create, edit, reset, activate, and deactivate users from one screen.</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
+            <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
               {sortedUsers.length} users
             </div>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+          {sortedUsers.length > ITEMS_PER_PAGE ? (
+            <div className="mb-4">
+              <PaginationControls
+                page={safePage}
+                pageCount={pageCount}
+                total={sortedUsers.length}
+                perPage={ITEMS_PER_PAGE}
+                onPageChange={setPage}
+                label="users"
+              />
+            </div>
+          ) : null}
+          <div className="overflow-x-auto rounded-2xl border border-[#eadacc] dark:border-white/10">
             <table className="min-w-full border-collapse">
               <thead>
-                <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                   <th className="px-4 py-3">Username</th>
                   <th className="px-4 py-3">Full Name</th>
                   <th className="px-4 py-3">Email</th>
@@ -225,10 +244,10 @@ export function UsersManager({
                 </tr>
               </thead>
               <tbody>
-                {sortedUsers.map((user) => {
+                {paginatedUsers.map((user) => {
                   const isSelf = currentUsername === user.username;
                   return (
-                    <tr key={user.id} className="border-b border-slate-100 hover:bg-gold/5 dark:border-white/10 dark:hover:bg-white/[0.03]">
+                    <tr key={user.id} className="border-b border-[#f0dfd0] hover:bg-gold/5 dark:border-white/10 dark:hover:bg-white/[0.03]">
                       <td className="px-4 py-4 font-semibold text-ink dark:text-slate-50">{user.username}</td>
                       <td className="px-4 py-4 text-sm text-ink dark:text-slate-100">{user.full_name}</td>
                       <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">{user.email || "N/A"}</td>
@@ -251,14 +270,14 @@ export function UsersManager({
                           <button
                             type="button"
                             onClick={() => setEditTarget(user)}
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200"
+                            className="rounded-xl border border-[#eadacc] px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => setResetTarget({ id: user.id, username: user.username })}
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200"
+                            className="rounded-xl border border-[#eadacc] px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200"
                           >
                             Reset
                           </button>
@@ -281,15 +300,15 @@ export function UsersManager({
           </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
+        <section className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
           <div className="mb-5">
             <h2 className="font-serif text-2xl text-ink dark:text-slate-50">Role & Permission Matrix</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Current route-level access for every built-in role in the CRM.</p>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+          <div className="overflow-x-auto rounded-2xl border border-[#eadacc] dark:border-white/10">
             <table className="min-w-full border-collapse">
               <thead>
-                <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                   <th className="px-4 py-3">Module</th>
                   {allRoles.map((role) => (
                     <th key={role} className="px-4 py-3">{roleLabels[role]}</th>
@@ -298,7 +317,7 @@ export function UsersManager({
               </thead>
               <tbody>
                 {permissions.map((entry) => (
-                  <tr key={entry.prefix} className="border-b border-slate-100 dark:border-white/10">
+                  <tr key={entry.prefix} className="border-b border-[#f0dfd0] dark:border-white/10">
                     <td className="px-4 py-4">
                       <p className="font-medium text-ink dark:text-slate-100">{entry.label}</p>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{entry.prefix}</p>
@@ -323,12 +342,12 @@ export function UsersManager({
 
       {resetTarget ? (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/50 px-4"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#213343]/50 px-4"
           onClick={(event) => {
             if (event.target === event.currentTarget) setResetTarget(null);
           }}
         >
-          <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 shadow-panel dark:border-white/10 dark:bg-[#101a2d]">
+          <div className="w-full max-w-lg rounded-xl border border-[#eadacc] bg-white p-6 shadow-panel dark:border-white/10 dark:bg-[#182638]">
             <h2 className="mb-5 font-serif text-2xl text-ink dark:text-slate-50">Reset Password</h2>
             <form action={handleResetPassword} className="space-y-4">
               <Field label="Username" name="username_display" defaultValue={resetTarget.username} readOnly />
@@ -337,7 +356,7 @@ export function UsersManager({
                 <button type="submit" disabled={isPending} className="rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:opacity-70 dark:bg-[#ff7a59]">
                   Reset Password
                 </button>
-                <button type="button" onClick={() => setResetTarget(null)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200">
+                <button type="button" onClick={() => setResetTarget(null)} className="rounded-xl border border-[#eadacc] px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200">
                   Cancel
                 </button>
               </div>
@@ -348,12 +367,12 @@ export function UsersManager({
 
       {editTarget ? (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/50 px-4"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#213343]/50 px-4"
           onClick={(event) => {
             if (event.target === event.currentTarget) setEditTarget(null);
           }}
         >
-          <div className="w-full max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-panel dark:border-white/10 dark:bg-[#101a2d]">
+          <div className="w-full max-w-3xl rounded-xl border border-[#eadacc] bg-white p-6 shadow-panel dark:border-white/10 dark:bg-[#182638]">
             <h2 className="mb-5 font-serif text-2xl text-ink dark:text-slate-50">Edit User</h2>
             <form action={handleEditUser} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -363,7 +382,7 @@ export function UsersManager({
                 <Field label="Phone" name="phone" defaultValue={editTarget.phone ?? ""} />
                 <label className="block text-sm text-slate-600">
                   <span className="mb-2 block font-medium text-ink">Role *</span>
-                  <select name="role" required className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" defaultValue={editTarget.role}>
+                  <select name="role" required className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" defaultValue={editTarget.role}>
                     {allRoles.map((role) => (
                       <option key={role} value={role}>
                         {roleLabels[role]}
@@ -373,7 +392,7 @@ export function UsersManager({
                 </label>
                 <label className="block text-sm text-slate-600">
                   <span className="mb-2 block font-medium text-ink">Status *</span>
-                  <select name="status" required className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" defaultValue={editTarget.status}>
+                  <select name="status" required className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" defaultValue={editTarget.status}>
                     <option value="active">active</option>
                     <option value="inactive">inactive</option>
                   </select>
@@ -383,7 +402,7 @@ export function UsersManager({
                 <button type="submit" disabled={isPending} className="rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:opacity-70 dark:bg-[#ff7a59]">
                   Save Changes
                 </button>
-                <button type="button" onClick={() => setEditTarget(null)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200">
+                <button type="button" onClick={() => setEditTarget(null)} className="rounded-xl border border-[#eadacc] px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200">
                   Cancel
                 </button>
               </div>
@@ -402,7 +421,7 @@ function RoleField() {
       <select
         name="role"
         required
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+        className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
         defaultValue=""
       >
         <option value="" disabled>
@@ -450,7 +469,7 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         readOnly={readOnly}
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+        className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
       />
     </label>
   );

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type StatusFilter = "all" | "pending" | "paid" | "overdue";
 type SortKey = "days_waiting" | "amount" | "name" | "due_date";
@@ -20,6 +21,8 @@ type CommissionRow = {
   phone: string | null;
   university_name: string | null;
 };
+
+const ITEMS_PER_PAGE = 10;
 
 function formatDate(value: string | null) {
   if (!value) return "N/A";
@@ -105,6 +108,7 @@ export function CommissionsTable({
   const [modal, setModal] = useState<{ studentId: string; studentName: string } | null>(null);
   const [paidDate, setPaidDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
+  const [page, setPage] = useState(0);
   const resolvedRows: CommissionRow[] = useMemo(() => {
     if (rows) return rows;
     if (!commissions) return [];
@@ -172,6 +176,9 @@ export function CommissionsTable({
   const oldestPending = resolvedRows
     .filter((row) => row.commission_status !== "paid")
     .sort((a, b) => b.days_waiting - a.days_waiting)[0] ?? null;
+  const pageCount = Math.max(1, Math.ceil(resolvedRows.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedRows = resolvedRows.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   function applyFilters(next: { status: StatusFilter; institution: string; sort: SortKey }) {
     const params = new URLSearchParams();
@@ -247,8 +254,8 @@ export function CommissionsTable({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
-        <div className="flex flex-col gap-4 border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)] lg:flex-row lg:items-center lg:justify-between">
+      <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638]">
+        <div className="flex flex-col gap-4 border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)] lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="font-serif text-3xl">Commission Tracker</h1>
             <p className="mt-2 text-sm text-white/70">Track institutional commission payments (140,000 KES per student).</p>
@@ -283,11 +290,11 @@ export function CommissionsTable({
           </div>
 
           {institutionBreakdown.length > 0 ? (
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+            <div className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
               <h3 className="mb-5 font-serif text-2xl text-ink dark:text-white">Commission Breakdown by Institution</h3>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {institutionBreakdown.map(([institutionName, data]) => (
-                  <div key={institutionName} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div key={institutionName} className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/[0.04]">
                     <h4 className="font-semibold text-ink dark:text-white">{institutionName}</h4>
                     <div className="mt-4 space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-slate-500">Students</span><span className="font-semibold text-ink">{data.count}</span></div>
@@ -301,7 +308,7 @@ export function CommissionsTable({
             </div>
           ) : null}
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+            <div className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
             <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <h3 className="font-serif text-2xl text-ink dark:text-white">Commission Tracker</h3>
               <button type="button" onClick={exportCsv} className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white">
@@ -316,7 +323,7 @@ export function CommissionsTable({
                     key={status}
                     type="button"
                     onClick={() => applyFilters({ status, institution, sort: sortBy })}
-                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${statusFilter === status ? "border-gold bg-gold text-ink dark:border-[#ffb89e] dark:bg-[#ff7a59] dark:text-white" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-gold hover:text-gold dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:text-[#ffb89e]"}`}
+                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${statusFilter === status ? "border-gold bg-gold text-ink dark:border-[#ffb89e] dark:bg-[#ff7a59] dark:text-white" : "border-[#eadacc] bg-[#fff6ef] text-slate-700 hover:border-gold hover:text-gold dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:text-[#ffb89e]"}`}
                   >
                     {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)}
                   </button>
@@ -331,7 +338,7 @@ export function CommissionsTable({
                     setInstitution(next);
                     applyFilters({ status: statusFilter, institution: next, sort: sortBy });
                   }}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100"
+                  className="rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-2 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100"
                 >
                   <option value="all">All Institutions</option>
                   {institutions.map((inst) => (
@@ -344,7 +351,7 @@ export function CommissionsTable({
                 <select
                   value={sortBy}
                   onChange={(event) => applyFilters({ status: statusFilter, institution, sort: event.target.value as SortKey })}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm"
+                  className="rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-2 text-sm"
                 >
                   <option value="days_waiting">Days Waiting</option>
                   <option value="amount">Amount</option>
@@ -355,7 +362,7 @@ export function CommissionsTable({
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200">
+          <div className="overflow-x-auto rounded-2xl border border-[#eadacc]">
             {resolvedRows.length === 0 ? (
               <div className="px-6 py-16 text-center text-slate-500">
                 <div className="text-5xl text-gold/70">⌕</div>
@@ -363,21 +370,34 @@ export function CommissionsTable({
                 <p className="mt-2 text-sm">No enrolled students match the current filters.</p>
               </div>
             ) : (
-              <table className="min-w-full border-collapse">
-                <thead>
-                  <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Student Name</th>
-                    <th className="px-4 py-3">Institution</th>
-                    <th className="px-4 py-3">Enrollment Date</th>
-                    <th className="px-4 py-3">Days Waiting</th>
-                    <th className="px-4 py-3">Due Date</th>
-                    <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resolvedRows.map((row) => {
+              <>
+                {resolvedRows.length > ITEMS_PER_PAGE ? (
+                  <div className="border-b border-[#eadacc] bg-[#fffaf5] p-3">
+                    <PaginationControls
+                      page={safePage}
+                      pageCount={pageCount}
+                      total={resolvedRows.length}
+                      perPage={ITEMS_PER_PAGE}
+                      onPageChange={setPage}
+                      label="commissions"
+                    />
+                  </div>
+                ) : null}
+                <table className="min-w-full border-collapse">
+                  <thead>
+                    <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Student Name</th>
+                      <th className="px-4 py-3">Institution</th>
+                      <th className="px-4 py-3">Enrollment Date</th>
+                      <th className="px-4 py-3">Days Waiting</th>
+                      <th className="px-4 py-3">Due Date</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedRows.map((row) => {
                     const badge = statusBadge(row);
                     return (
                       <tr key={row.id} className={`${rowTone(row)} hover:bg-gold/5`}>
@@ -423,17 +443,18 @@ export function CommissionsTable({
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
+                    })}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         </div>
       </section>
 
       {modal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setModal(null)}>
-          <div className="w-full max-w-lg rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#213343]/60 p-4 backdrop-blur-sm" onClick={() => setModal(null)}>
+          <div className="w-full max-w-lg rounded-[1.75rem] border border-[#eadacc] bg-white p-8 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-serif text-2xl text-ink">Mark Commission as Paid</h2>
               <button type="button" onClick={() => setModal(null)} className="text-2xl text-slate-400">
@@ -443,21 +464,21 @@ export function CommissionsTable({
             <form className="space-y-4" onSubmit={markPaid}>
               <label className="block text-sm text-slate-600">
                 <span className="mb-2 block font-medium text-ink">Student</span>
-                <input value={modal.studentName} readOnly className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" />
+                <input value={modal.studentName} readOnly className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3" />
               </label>
               <label className="block text-sm text-slate-600">
                 <span className="mb-2 block font-medium text-ink">Payment Received Date</span>
-                <input type="date" required value={paidDate} onChange={(event) => setPaidDate(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3" />
+                <input type="date" required value={paidDate} onChange={(event) => setPaidDate(event.target.value)} className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3" />
               </label>
               <label className="block text-sm text-slate-600">
                 <span className="mb-2 block font-medium text-ink">Notes</span>
-                <textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3" placeholder="Any additional notes..." />
+                <textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} className="w-full rounded-xl border border-[#eadacc] bg-white px-4 py-3" placeholder="Any additional notes..." />
               </label>
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={isPending} className="flex-1 rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
                   Mark as Paid
                 </button>
-                <button type="button" onClick={() => setModal(null)} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700">
+                <button type="button" onClick={() => setModal(null)} className="rounded-xl border border-[#eadacc] px-4 py-3 text-sm font-semibold text-slate-700">
                   Cancel
                 </button>
               </div>
@@ -479,7 +500,7 @@ function SummaryCard({
   tone: string;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-6 text-center">
       <p className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</p>
       <p className={`mt-3 text-3xl font-extrabold ${tone}`}>{value}</p>
     </div>

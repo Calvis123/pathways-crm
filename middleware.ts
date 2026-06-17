@@ -6,8 +6,9 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (!session && !isPublicPath(pathname)) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
+    const loginUrl = new URL("/", request.url);
+    loginUrl.searchParams.set("signin", "1");
+    loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 

@@ -55,12 +55,3 @@ insert into public.audit_logs (id, action, table_name, related_id, record_label,
   ('3ab2ee94-fa89-457c-8856-7128ee7c28c2', 'Consultation Scheduled', 'consultations', 'ca403647-ac01-4f11-aac4-0d6e9f9fdcb7', 'Brian Otieno', null, '{"status":"pending"}', 'System'),
   ('c3ca1278-8825-4d59-a104-42d01b5ec431', 'Document Reviewed', 'student_documents', '535fe534-45d2-4a90-b6ef-a85242da62eb', 'faith-passport.pdf', '{"status":"uploaded"}', '{"status":"verified"}', 'System')
 on conflict (id) do nothing;
-
-insert into public.users (id, username, password, full_name, email, role, status, phone) values
-  ('10000000-0000-0000-0000-000000000200', 'hr', 'barak123', 'Hannah HR', 'hr@barakpathways.com', 'hr', 'active', '+254700222200')
-on conflict (email) do update set
-  username = excluded.username,
-  full_name = excluded.full_name,
-  role = excluded.role,
-  status = excluded.status,
-  phone = excluded.phone;

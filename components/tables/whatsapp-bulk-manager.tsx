@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { ExternalLink, MessageCircleMore, Send, Users2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { cn } from "@/lib/utils";
 
 type ReachableStudent = {
@@ -37,6 +38,8 @@ const messagePresets = [
   }
 ] as const;
 
+const ITEMS_PER_PAGE = 10;
+
 function humanizeStage(stage: string) {
   return stage.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -53,6 +56,8 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
   const [message, setMessage] = useState<string>(messagePresets[0].text);
   const [status, setStatus] = useState<string | null>(null);
   const [launchedLinks, setLaunchedLinks] = useState<Array<{ id: string; name: string; link: string }>>([]);
+  const [contactsPage, setContactsPage] = useState(0);
+  const [linksPage, setLinksPage] = useState(0);
   const [isPending, startTransition] = useTransition();
 
   const filteredStudents = useMemo(() => {
@@ -65,18 +70,27 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
     );
   }, [query, students]);
 
+  const contactsPageCount = Math.max(1, Math.ceil(filteredStudents.length / ITEMS_PER_PAGE));
+  const safeContactsPage = Math.min(contactsPage, contactsPageCount - 1);
+  const paginatedStudents = filteredStudents.slice(
+    safeContactsPage * ITEMS_PER_PAGE,
+    safeContactsPage * ITEMS_PER_PAGE + ITEMS_PER_PAGE
+  );
+  const linksPageCount = Math.max(1, Math.ceil(launchedLinks.length / ITEMS_PER_PAGE));
+  const safeLinksPage = Math.min(linksPage, linksPageCount - 1);
+  const paginatedLinks = launchedLinks.slice(safeLinksPage * ITEMS_PER_PAGE, safeLinksPage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
   const selectedStudents = filteredStudents.filter((student) => selectedIds.includes(student.id));
   const allVisibleSelected =
-    filteredStudents.length > 0 &&
-    filteredStudents.every((student) => selectedIds.includes(student.id));
+    paginatedStudents.length > 0 &&
+    paginatedStudents.every((student) => selectedIds.includes(student.id));
 
   function toggleSelectAll() {
     if (allVisibleSelected) {
-      setSelectedIds((current) => current.filter((id) => !filteredStudents.some((student) => student.id === id)));
+      setSelectedIds((current) => current.filter((id) => !paginatedStudents.some((student) => student.id === id)));
       return;
     }
 
-    setSelectedIds((current) => Array.from(new Set([...current, ...filteredStudents.map((student) => student.id)])));
+    setSelectedIds((current) => Array.from(new Set([...current, ...paginatedStudents.map((student) => student.id)])));
   }
 
   function toggleStudent(id: string) {
@@ -150,7 +164,7 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
 
   return (
     <div className="space-y-6">
-      <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+      <Card className="dark:border-white/10 dark:bg-[#182638]">
         <CardHeader
           title="WhatsApp Campaign Launcher"
           description="Select students, tailor a message, and launch personalized WhatsApp chats in one workflow."
@@ -164,7 +178,7 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search by name, phone, country, or stage"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
+                className="w-full rounded-lg border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
               />
             </label>
 
@@ -174,7 +188,7 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
                   key={preset.id}
                   type="button"
                   onClick={() => setMessage(preset.text)}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
+                  className="rounded-full border border-[#eadacc] bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#fff6ef] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
                 >
                   {preset.label}
                 </button>
@@ -186,7 +200,7 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                className="min-h-36 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                className="min-h-36 w-full rounded-lg border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
               />
               <span className="mt-2 block text-xs text-slate-500 dark:text-slate-400">
                 Supported placeholders: <code>{"{name}"}</code> and <code>{"{country}"}</code>
@@ -206,9 +220,9 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
             {status ? <p className="text-sm text-slate-600 dark:text-slate-300">{status}</p> : null}
           </div>
 
-          <div className="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#fffdf8_0%,#fff7ee_100%)] p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,#1b263c_0%,#141f33_100%)]">
+          <div className="rounded-xl border border-[#eadacc] bg-[linear-gradient(180deg,#fffdf8_0%,#fff7ee_100%)] p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,#1b263c_0%,#141f33_100%)]">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#22c55e,#16a34a)] text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#22c55e,#16a34a)] text-white">
                 <MessageCircleMore className="h-5 w-5" />
               </div>
               <div>
@@ -219,12 +233,12 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
 
             <div className="mt-5 space-y-3">
               {selectedStudents.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-6 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+                <div className="rounded-lg border border-dashed border-[#d9c1ad] bg-white/70 px-4 py-6 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
                   Choose students from the list to prepare a WhatsApp outreach batch.
                 </div>
               ) : (
                 selectedStudents.slice(0, 6).map((student) => (
-                  <div key={student.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div key={student.id} className="rounded-lg border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]">
                     <p className="font-medium text-ink dark:text-slate-100">{student.full_name}</p>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       {student.phone} · {humanizeStage(student.stage)}
@@ -243,27 +257,40 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
         </div>
       </Card>
 
-      <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+      <Card className="dark:border-white/10 dark:bg-[#182638]">
         <CardHeader
           title="Reachable Contacts"
           description={`${students.length} students currently have WhatsApp-ready numbers.`}
           action={
             <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
               <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-4 w-4" />
-              Select visible
+              Select page
             </label>
           }
         />
 
+        {filteredStudents.length > ITEMS_PER_PAGE ? (
+          <div className="mb-4">
+            <PaginationControls
+              page={safeContactsPage}
+              pageCount={contactsPageCount}
+              total={filteredStudents.length}
+              perPage={ITEMS_PER_PAGE}
+              onPageChange={setContactsPage}
+              label="contacts"
+            />
+          </div>
+        ) : null}
+
         <div className="grid gap-3 xl:grid-cols-2">
-          {filteredStudents.map((student) => {
+          {paginatedStudents.map((student) => {
             const selected = selectedIds.includes(student.id);
             return (
               <div
                 key={student.id}
                 className={cn(
-                  "rounded-2xl border p-4 transition",
-                  selected ? "border-gold bg-gold/10 dark:border-[#ffbeab] dark:bg-[#ff7a59]/10" : "border-slate-200 bg-white dark:border-white/10 dark:bg-white/[0.04]"
+                  "rounded-lg border p-4 transition",
+                  selected ? "border-gold bg-gold/10 dark:border-[#ffbeab] dark:bg-[#ff7a59]/10" : "border-[#eadacc] bg-white dark:border-white/10 dark:bg-white/[0.04]"
                 )}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -288,26 +315,38 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
         </div>
 
         {filteredStudents.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+          <div className="mt-4 rounded-lg border border-dashed border-[#d9c1ad] px-4 py-10 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
             No reachable WhatsApp contacts matched your search.
           </div>
         ) : null}
       </Card>
 
       {launchedLinks.length > 0 ? (
-        <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+        <Card className="dark:border-white/10 dark:bg-[#182638]">
           <CardHeader
             title="Prepared Campaign Links"
             description="Use these direct WhatsApp links if your browser blocked some new tabs."
           />
+          {launchedLinks.length > ITEMS_PER_PAGE ? (
+            <div className="mb-4">
+              <PaginationControls
+                page={safeLinksPage}
+                pageCount={linksPageCount}
+                total={launchedLinks.length}
+                perPage={ITEMS_PER_PAGE}
+                onPageChange={setLinksPage}
+                label="links"
+              />
+            </div>
+          ) : null}
           <div className="grid gap-3 xl:grid-cols-2">
-            {launchedLinks.map((item) => (
+            {paginatedLinks.map((item) => (
               <a
                 key={item.id}
                 href={item.link}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-gold hover:bg-gold/5 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-[#ffbeab] dark:hover:bg-white/[0.08]"
+                className="flex items-center justify-between rounded-lg border border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-slate-700 transition hover:border-gold hover:bg-gold/5 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-[#ffbeab] dark:hover:bg-white/[0.08]"
               >
                 <span className="font-medium">{item.name}</span>
                 <ExternalLink className="h-4 w-4" />
@@ -317,23 +356,23 @@ export function WhatsAppBulkManager({ students }: { students: ReachableStudent[]
         </Card>
       ) : null}
 
-      <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+      <Card className="dark:border-white/10 dark:bg-[#182638]">
         <CardHeader
           title="How This Works"
           description="WhatsApp Web does not support silent bulk sending without a third-party business API, so this launcher prepares personalized chats and logs the campaign inside the CRM."
         />
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="rounded-lg border border-[#eadacc] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/[0.04]">
             <Users2 className="h-5 w-5 text-gold" />
             <p className="mt-3 font-medium text-ink dark:text-slate-100">Select an audience</p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Choose students by stage, country, or search term.</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="rounded-lg border border-[#eadacc] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/[0.04]">
             <MessageCircleMore className="h-5 w-5 text-gold" />
             <p className="mt-3 font-medium text-ink dark:text-slate-100">Tailor the message</p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Use placeholders so each chat opens with a personalized note.</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="rounded-lg border border-[#eadacc] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/[0.04]">
             <ExternalLink className="h-5 w-5 text-gold" />
             <p className="mt-3 font-medium text-ink dark:text-slate-100">Launch and track</p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Open WhatsApp chats quickly while keeping an audit trail in the CRM.</p>

@@ -36,7 +36,7 @@ export default async function HrOperationsPage() {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {queues.map((queue) => (
-            <div key={queue.label} className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-[#0d1729]">
+            <div key={queue.label} className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-[#182638]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{queue.label}</p>
               <p className="mt-4 text-3xl font-semibold text-ink dark:text-white">{queue.value}</p>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">{queue.detail}</p>
@@ -45,11 +45,11 @@ export default async function HrOperationsPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader title="Consultation Queue" description="Upcoming work that should be watched for response quality." />
             <div className="space-y-3">
               {pendingConsultations.slice(0, 8).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+                <div key={item.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.05]">
                   <p className="font-medium text-ink dark:text-white">{item.student?.full_name ?? "Unknown student"}</p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
                     {item.status} - {formatDate(item.scheduled_at, { dateStyle: "medium", timeStyle: "short" })}
@@ -59,11 +59,11 @@ export default async function HrOperationsPage() {
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader title="Document Queue" description="Student files still needing attention." />
             <div className="space-y-3">
               {pendingDocuments.slice(0, 8).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+                <div key={item.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.05]">
                   <p className="font-medium text-ink dark:text-white">{item.original_filename}</p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
                     {item.student?.full_name ?? "Unknown student"} - {item.status}
@@ -74,11 +74,11 @@ export default async function HrOperationsPage() {
           </Card>
         </div>
 
-        <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+        <Card className="dark:border-white/10 dark:bg-[#182638]">
           <CardHeader title="Pipeline Pressure" description="Early-stage students that still need conversion and follow-through." />
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {earlyPipeline.slice(0, 9).map((student) => (
-              <div key={student.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+              <div key={student.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.05]">
                 <p className="font-medium text-ink dark:text-white">{student.full_name}</p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
                   {student.stage} - {student.country_interest ?? "Country not set"}

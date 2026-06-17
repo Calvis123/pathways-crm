@@ -12,6 +12,7 @@ import {
   getUpcomingConsultations,
   getUnreadPortalMessages
 } from "@/lib/data";
+import { getConsultationBalance } from "@/lib/finance";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 function startOfToday() {
@@ -48,8 +49,7 @@ export default async function NotificationsPage() {
 
   const paymentAlerts = students
     .map((student) => {
-      const paid = (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
-      const balance = Math.max(0, 40000 - paid);
+      const balance = getConsultationBalance(student);
       const overdue =
         student.payment_due_date &&
         new Date(`${student.payment_due_date}T00:00:00`).getTime() < today.getTime();
@@ -180,18 +180,18 @@ export default async function NotificationsPage() {
             ))}
           </NotificationSection>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Recent Activity Feed"
               description="Latest CRM activity for context around your communication work."
             />
             <div className="space-y-3">
               {auditItems.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div key={item.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <p className="font-medium text-ink dark:text-slate-50">{item.action}</p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {item.record_label ?? item.table_name}
-                    {item.actor_name ? ` · ${item.actor_name}` : ""}
+                    {item.actor_name ? ` - ${item.actor_name}` : ""}
                   </p>
                   <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                     {formatDate(item.created_at, { dateStyle: "medium", timeStyle: "short" })}
@@ -247,14 +247,14 @@ function NotificationSection({
         action={
           <Link
             href={href}
-            className="inline-flex items-center rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-100 dark:hover:bg-white/10"
+            className="inline-flex items-center rounded-xl border border-[#eadacc] px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-[#fff6ef] dark:border-white/10 dark:text-slate-100 dark:hover:bg-white/10"
           >
             Open
           </Link>
         }
       />
       <div className="space-y-3">
-        {hasChildren ? children : <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">{empty}</div>}
+        {hasChildren ? children : <div className="rounded-2xl border border-dashed border-[#d9c6b8] px-4 py-8 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">{empty}</div>}
       </div>
     </Card>
   );
@@ -282,7 +282,7 @@ function AlertRow({
     tone === "danger" ? <FileWarning className="h-4 w-4" /> : <Bell className="h-4 w-4" />;
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.04]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-medium text-ink dark:text-slate-50">{title}</p>

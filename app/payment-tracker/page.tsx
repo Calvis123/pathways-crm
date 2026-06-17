@@ -1,7 +1,9 @@
 import { PaymentTrackerManager } from "@/components/tables/payment-tracker-manager";
 import { getStudents } from "@/lib/data";
+import { getTrackedPaymentTarget } from "@/lib/finance";
 
 type StatusFilter = "all" | "pending" | "partial" | "paid";
+const validStatusFilters = new Set<StatusFilter>(["all", "pending", "partial", "paid"]);
 
 export default async function PaymentTrackerPage({
   searchParams
@@ -9,21 +11,25 @@ export default async function PaymentTrackerPage({
   searchParams: Promise<{ status?: string; university?: string }>;
 }) {
   const params = await searchParams;
-  const statusFilter = (params.status as StatusFilter | undefined) ?? "all";
+  const statusFilter = validStatusFilters.has(params.status as StatusFilter)
+    ? (params.status as StatusFilter)
+    : "all";
   const universityFilter = (params.university ?? "").trim().toLowerCase();
 
   const students = await getStudents();
   const visaApprovedStudents = students
     .filter((student) => student.stage === "visa")
     .map((student) => {
-      const paymentAmount = student.payment_amount ?? 20000;
+      const paymentAmount = getTrackedPaymentTarget(student);
       const paymentPaid = student.payment_paid ?? 0;
       const paymentDate = student.payment_date ?? null;
-      const status =
-        student.payment_status === "full"
-          ? "paid"
-          : (student.payment_status as string | null) ?? (paymentPaid > 0 ? "partial" : "pending");
       const balanceDue = Math.max(0, paymentAmount - paymentPaid);
+      const status =
+        student.payment_status === "full" || student.payment_status === "paid" || balanceDue <= 0
+          ? "paid"
+          : paymentPaid > 0
+            ? "partial"
+            : "pending";
       const anchorDate = paymentDate ?? student.updated_at ?? student.created_at;
       const daysSinceApproval = Math.max(
         0,

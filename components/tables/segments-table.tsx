@@ -7,6 +7,7 @@ import { getSegmentMeta, stageLabels } from "@/lib/constants";
 import type { SegmentKey, SegmentSummary, Student } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 import { IonIcon } from "@/components/ui/ion-icon";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type SegmentFilter = SegmentKey | "all";
 
@@ -24,6 +25,8 @@ const segmentOrder: SegmentKey[] = [
   "vip",
   "unsegmented"
 ];
+
+const ITEMS_PER_PAGE = 10;
 
 function scoreTone(score: number) {
   if (score >= 70) return "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200";
@@ -56,12 +59,16 @@ export function SegmentsTable({
   const [singleReason, setSingleReason] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkSegment, setBulkSegment] = useState<SegmentKey>("needs_guidance");
+  const [page, setPage] = useState(0);
 
   const summaryMap = useMemo(() => {
     return new Map(summaries.map((summary) => [summary.segment, summary]));
   }, [summaries]);
 
-  const allVisibleSelected = students.length > 0 && students.every((student) => selectedIds.includes(student.id));
+  const pageCount = Math.max(1, Math.ceil(students.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedStudents = students.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
+  const allVisibleSelected = paginatedStudents.length > 0 && paginatedStudents.every((student) => selectedIds.includes(student.id));
 
   function resetMessages() {
     setError(null);
@@ -70,10 +77,10 @@ export function SegmentsTable({
 
   function toggleSelectAll() {
     if (allVisibleSelected) {
-      setSelectedIds([]);
+      setSelectedIds((current) => current.filter((id) => !paginatedStudents.some((student) => student.id === id)));
       return;
     }
-    setSelectedIds(students.map((student) => student.id));
+    setSelectedIds((current) => Array.from(new Set([...current, ...paginatedStudents.map((student) => student.id)])));
   }
 
   function toggleStudent(id: string) {
@@ -118,8 +125,8 @@ export function SegmentsTable({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
-        <div className="border-b border-[#8f7a30]/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)]">
+      <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638]">
+        <div className="border-b border-[#8f7a30]/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)]">
           <h1 className="font-serif text-3xl">Customer Segmentation</h1>
           <p className="mt-2 text-sm text-white/70">
             Auto-segment students based on behavior, readiness, and value.
@@ -165,7 +172,7 @@ export function SegmentsTable({
           </div>
 
           <div className="grid gap-4 xl:grid-cols-3 2xl:grid-cols-4">
-            <div className="rounded-3xl border border-slate-200 bg-[#0f172a] p-5 text-white">
+            <div className="rounded-xl border border-[#eadacc] bg-[linear-gradient(135deg,#213343,#3f5a68)] p-5 text-white">
               <p className="text-sm uppercase tracking-[0.08em] text-white/60">Total Students</p>
               <p className="mt-4 text-4xl font-semibold">{totalStudents}</p>
               <p className="mt-2 text-sm text-white/70">All registered students</p>
@@ -176,7 +183,7 @@ export function SegmentsTable({
               return (
                 <div
                   key={segment}
-                  className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.05]"
+                  className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.05]"
                   style={{ borderLeftColor: meta.color, borderLeftWidth: 4 }}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -207,8 +214,8 @@ export function SegmentsTable({
               className={cn(
                 "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition",
                 filterSegment === "all"
-                  ? "border-[#0f172a] bg-[#0f172a] text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-gold hover:bg-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:bg-white/[0.08]"
+                  ? "border-[#213343] bg-[linear-gradient(135deg,#213343,#3f5a68)] text-white"
+                  : "border-[#eadacc] bg-white text-slate-700 hover:border-gold hover:bg-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:bg-white/[0.08]"
               )}
             >
               All Students
@@ -223,7 +230,7 @@ export function SegmentsTable({
                     "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition",
                     filterSegment === segment
                       ? "text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:bg-white/[0.08]"
+                      : "border-[#eadacc] bg-white text-slate-700 hover:bg-[#fff6ef] dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 dark:hover:bg-white/[0.08]"
                   )}
                   style={
                     filterSegment === segment
@@ -240,8 +247,18 @@ export function SegmentsTable({
             })}
           </div>
 
-          <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 dark:border-white/10">
-            <div className="hidden grid-cols-[52px_minmax(220px,1fr)_160px_100px_120px_120px_90px] gap-4 bg-[#0f172a] px-5 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-white lg:grid">
+          <div className="overflow-hidden rounded-[1.5rem] border border-[#eadacc] dark:border-white/10">
+            <div className="border-b border-[#eadacc] bg-[#fffaf5] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+              <PaginationControls
+                page={safePage}
+                pageCount={pageCount}
+                total={students.length}
+                perPage={ITEMS_PER_PAGE}
+                onPageChange={setPage}
+                label="students"
+              />
+            </div>
+            <div className="hidden grid-cols-[52px_minmax(220px,1fr)_160px_100px_120px_120px_90px] gap-4 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-5 py-4 text-xs font-semibold uppercase tracking-[0.08em] text-white lg:grid">
               <label className="flex items-center">
                 <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
               </label>
@@ -253,14 +270,14 @@ export function SegmentsTable({
               <div>Actions</div>
             </div>
 
-            <div className="divide-y divide-slate-100 bg-white dark:divide-white/10 dark:bg-[#0f1b31]">
+            <div className="divide-y divide-slate-100 bg-white dark:divide-white/10 dark:bg-[#182638]">
               {students.length === 0 ? (
                 <div className="px-6 py-16 text-center text-slate-500 dark:text-slate-300">
                   No students found. Run auto-segment to categorize all students.
                 </div>
               ) : null}
 
-              {students.map((student) => {
+              {paginatedStudents.map((student) => {
                 const meta = getSegmentMeta(student.effective_segment);
                 return (
                   <div
@@ -316,7 +333,7 @@ export function SegmentsTable({
                       <button
                         type="button"
                         onClick={() => openSingleModal(student)}
-                        className="inline-flex rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.06]"
+                        className="inline-flex rounded-xl border border-[#eadacc] px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#fff6ef] dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.06]"
                       >
                         Edit
                       </button>
@@ -330,12 +347,12 @@ export function SegmentsTable({
       </section>
 
       {selectedIds.length > 0 ? (
-        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-4 rounded-2xl border border-gold bg-[#0f172a] px-5 py-4 text-white shadow-2xl">
+        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-4 rounded-2xl border border-gold bg-[linear-gradient(135deg,#213343,#3f5a68)] px-5 py-4 text-white shadow-2xl">
           <span className="text-sm font-medium">{selectedIds.length} selected</span>
           <button
             type="button"
             onClick={() => setBulkOpen(true)}
-            className="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-[#0f172a]"
+            className="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-[#213343]"
           >
             Change Segment
           </button>
@@ -344,11 +361,11 @@ export function SegmentsTable({
 
       {singleModal ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#213343]/70 p-4 backdrop-blur-sm"
           onClick={() => setSingleModal(null)}
         >
           <div
-            className="w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#0f1b31]"
+            className="w-full max-w-md rounded-[1.75rem] border border-[#eadacc] bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#182638]"
             onClick={(event) => event.stopPropagation()}
           >
             <h2 className="font-serif text-2xl text-ink dark:text-white">Change Segment</h2>
@@ -358,7 +375,7 @@ export function SegmentsTable({
                 <input
                   value={singleModal.studentName}
                   readOnly
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  className="w-full rounded-2xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3"
                 />
               </label>
               <label className="block text-sm text-slate-600">
@@ -366,7 +383,7 @@ export function SegmentsTable({
                 <select
                   value={singleSegment}
                   onChange={(event) => setSingleSegment(event.target.value as SegmentKey)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                  className="w-full rounded-2xl border border-[#eadacc] bg-white px-4 py-3"
                 >
                   {segmentOrder.map((segment) => (
                     <option key={segment} value={segment}>
@@ -381,14 +398,14 @@ export function SegmentsTable({
                   value={singleReason}
                   onChange={(event) => setSingleReason(event.target.value)}
                   placeholder="e.g. Student paid in full"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                  className="w-full rounded-2xl border border-[#eadacc] bg-white px-4 py-3"
                 />
               </label>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setSingleModal(null)}
-                  className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-2.5 text-sm font-semibold text-slate-700"
                 >
                   Cancel
                 </button>
@@ -418,11 +435,11 @@ export function SegmentsTable({
 
       {bulkOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#213343]/70 p-4 backdrop-blur-sm"
           onClick={() => setBulkOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#0f1b31]"
+            className="w-full max-w-md rounded-[1.75rem] border border-[#eadacc] bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#182638]"
             onClick={(event) => event.stopPropagation()}
           >
             <h2 className="font-serif text-2xl text-ink dark:text-white">Bulk Update Segments</h2>
@@ -435,7 +452,7 @@ export function SegmentsTable({
                 <select
                   value={bulkSegment}
                   onChange={(event) => setBulkSegment(event.target.value as SegmentKey)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                  className="w-full rounded-2xl border border-[#eadacc] bg-white px-4 py-3"
                 >
                   {segmentOrder.map((segment) => (
                     <option key={segment} value={segment}>
@@ -448,7 +465,7 @@ export function SegmentsTable({
                 <button
                   type="button"
                   onClick={() => setBulkOpen(false)}
-                  className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-2.5 text-sm font-semibold text-slate-700"
                 >
                   Cancel
                 </button>

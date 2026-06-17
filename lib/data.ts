@@ -35,6 +35,14 @@ import type {
   Task
 } from "@/lib/types";
 import { stageOrder } from "@/lib/constants";
+import {
+  CONSULTATION_FEE,
+  CONSULTATION_UPFRONT_AMOUNT,
+  getConsultationBalance,
+  getConsultationPaid,
+  getStudentPaymentStatus,
+  getTrackedPaymentTarget
+} from "@/lib/finance";
 import { classifyLeadTemperature } from "@/lib/lead-temperature";
 
 function admin() {
@@ -61,6 +69,10 @@ function canManageFinance(role: AppRole | undefined) {
   return role === "admin" || role === "employee";
 }
 
+function canRecordPayments(role: AppRole | undefined) {
+  return role === "admin" || role === "consultant" || role === "operations" || role === "employee";
+}
+
 function canManageTemplates(role: AppRole | undefined) {
   return role === "admin" || role === "consultant" || role === "marketing" || role === "ielts_trainer";
 }
@@ -70,14 +82,14 @@ function canManageConsultations(role: AppRole | undefined) {
 }
 
 function getStudentCollectedValue(student: Student) {
-  if (student.payment_status === "full") return 40000;
-  return (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
+  if (student.payment_status === "full") return CONSULTATION_FEE;
+  return getConsultationPaid(student);
 }
 
 function getSegmentScoreForKey(segment: SegmentKey, student?: Student) {
   if (segment === "vip") return 90;
   if (segment === "ready_to_go") {
-    if ((student?.consultation_upfront_paid ?? 0) >= 20000) return 80;
+    if ((student?.consultation_upfront_paid ?? 0) >= CONSULTATION_UPFRONT_AMOUNT) return 80;
     return 60;
   }
   if (segment === "ielts_focused") return 50;
@@ -99,7 +111,7 @@ function deriveSegmentForStudent(student: Student): { segment: SegmentKey; segme
   if (hasPaid && !["inquiry", "lead"].includes(student.stage)) {
     return {
       segment: "ready_to_go",
-      segment_score: upfrontPaid >= 20000 || balancePaid >= 20000 ? 80 : 60
+      segment_score: upfrontPaid >= CONSULTATION_UPFRONT_AMOUNT || balancePaid >= CONSULTATION_UPFRONT_AMOUNT ? 80 : 60
     };
   }
 
@@ -120,6 +132,54 @@ function deriveSegmentForStudent(student: Student): { segment: SegmentKey; segme
 
 async function readDb() {
   return readLocalDb();
+}
+
+function describeDataError(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message?: unknown }).message);
+  }
+
+  return String(error);
+}
+
+function logSupabaseReadFallback(source: string, error: unknown) {
+  console.warn(`[data] Supabase ${source} read failed. Falling back to local data. ${describeDataError(error)}`);
+}
+
+async function getLocalStudentsForSession() {
+  const session = await getCurrentSession();
+  const db = await readDb();
+  return filterStudentsByRole(db.students, session);
+}
+
+async function getLocalPayments(options?: { startDate?: string; endDate?: string }) {
+  const db = await readDb();
+  return db.payments
+    .filter((payment) => {
+      const paymentDate = (payment.paid_at ?? payment.created_at).slice(0, 10);
+      if (options?.startDate && paymentDate < options.startDate) return false;
+      if (options?.endDate && paymentDate > options.endDate) return false;
+      return true;
+    })
+    .map((payment) => {
+      const student = db.students.find((item) => item.id === payment.student_id);
+
+      return {
+        ...payment,
+        student: student
+          ? {
+              full_name: student.full_name,
+              stage: student.stage,
+              email: student.email
+            }
+          : undefined
+      };
+    })
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 function attachStudentBasics(student: Student | undefined) {
@@ -233,13 +293,16 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     ["placed", "employment"].includes(student.stage)
   ).length;
   const consultationRequests = students.filter((student) => student.consultation_requested).length;
-  const totalRevenue = students.reduce(
-    (sum, student) => sum + student.consultation_upfront_paid + student.consultation_balance_paid,
-    0
-  );
+  const totalRevenue = students.reduce((sum, student) => {
+    if (student.payment_status === "full" || student.payment_status === "paid") {
+      return sum + CONSULTATION_FEE;
+    }
+
+    return sum + getConsultationPaid(student);
+  }, 0);
   const pendingRevenue = students
     .filter((student) => student.payment_status !== "paid" && student.payment_status !== "full")
-    .reduce((sum, student) => sum + student.consultation_balance_paid, 0);
+    .reduce((sum, student) => sum + getConsultationBalance(student), 0);
   const overdueCommissions = commissions.filter((record) => record.status === "overdue").length;
   const conversionRate = totalStudents === 0 ? 0 : Number(((placedStudents / totalStudents) * 100).toFixed(1));
 
@@ -274,15 +337,22 @@ export const getStudents = cache(async function getStudents() {
   const session = await getCurrentSession();
 
   if (!hasSupabaseEnv()) {
-    const db = await readDb();
-    return filterStudentsByRole(db.students, session);
+    return getLocalStudentsForSession();
   }
   const supabase = admin();
-  const { data, error } = await supabase
-    .from("students")
-    .select("*")
-    .order("updated_at", { ascending: false });
+  let result;
 
+  try {
+    result = await supabase
+      .from("students")
+      .select("*")
+      .order("updated_at", { ascending: false });
+  } catch (error) {
+    logSupabaseReadFallback("students", error);
+    return getLocalStudentsForSession();
+  }
+
+  const { data, error } = result;
   if (error) throw error;
   return filterStudentsByRole((data ?? []) as Student[], session);
 });
@@ -386,26 +456,7 @@ export const getCommissions = cache(async function getCommissions() {
 
 export const getPayments = cache(async function getPayments(options?: { startDate?: string; endDate?: string }) {
   if (!hasSupabaseEnv()) {
-    const db = await readDb();
-    const payments = db.payments
-      .filter((payment) => {
-        const paymentDate = (payment.paid_at ?? payment.created_at).slice(0, 10);
-        if (options?.startDate && paymentDate < options.startDate) return false;
-        if (options?.endDate && paymentDate > options.endDate) return false;
-        return true;
-      })
-      .map((payment) => ({
-        ...payment,
-        student: db.students.find((student) => student.id === payment.student_id)
-          ? {
-              full_name: db.students.find((student) => student.id === payment.student_id)!.full_name,
-              stage: db.students.find((student) => student.id === payment.student_id)!.stage,
-              email: db.students.find((student) => student.id === payment.student_id)!.email
-            }
-          : undefined
-      }))
-      .sort((a, b) => b.created_at.localeCompare(a.created_at));
-    return payments;
+    return getLocalPayments(options);
   }
 
   const supabase = admin();
@@ -428,8 +479,16 @@ export const getPayments = cache(async function getPayments(options?: { startDat
       query = query.lte("created_at", `${options.endDate}T23:59:59`);
     }
   }
-  const { data, error } = await query;
+  let result;
 
+  try {
+    result = await query;
+  } catch (error) {
+    logSupabaseReadFallback("payments", error);
+    return getLocalPayments(options);
+  }
+
+  const { data, error } = result;
   if (error) throw error;
   return (data ?? []) as PaymentRecord[];
 });
@@ -1350,12 +1409,12 @@ export async function runStudentBulkAction(input: {
       const paymentMap = {
         full: {
           payment_status: "full",
-          consultation_upfront_paid: 20000,
-          consultation_balance_paid: 20000
+          consultation_upfront_paid: CONSULTATION_UPFRONT_AMOUNT,
+          consultation_balance_paid: CONSULTATION_FEE - CONSULTATION_UPFRONT_AMOUNT
         },
         partial: {
           payment_status: "installment",
-          consultation_upfront_paid: 20000,
+          consultation_upfront_paid: CONSULTATION_UPFRONT_AMOUNT,
           consultation_balance_paid: 0
         },
         none: {
@@ -1440,12 +1499,12 @@ export async function runStudentBulkAction(input: {
     const paymentMap = {
       full: {
         payment_status: "full",
-        consultation_upfront_paid: 20000,
-        consultation_balance_paid: 20000
+        consultation_upfront_paid: CONSULTATION_UPFRONT_AMOUNT,
+        consultation_balance_paid: CONSULTATION_FEE - CONSULTATION_UPFRONT_AMOUNT
       },
       partial: {
         payment_status: "installment",
-        consultation_upfront_paid: 20000,
+        consultation_upfront_paid: CONSULTATION_UPFRONT_AMOUNT,
         consultation_balance_paid: 0
       },
       none: {
@@ -1827,8 +1886,19 @@ export async function createPayment(input: {
   reference_number?: string | null;
   notes?: string | null;
   status?: PaymentRecord["status"];
+  syncStudentBalance?: boolean;
 }) {
   const session = await getCurrentSession();
+
+  if (!session || !canRecordPayments(session.role)) {
+    throw new Error("You do not have permission to record payments.");
+  }
+
+  const shouldSyncStudentBalance =
+    input.syncStudentBalance !== false &&
+    input.payment_type === "consultation" &&
+    input.status !== "pending" &&
+    input.status !== "refunded";
 
   if (!hasSupabaseEnv()) {
     const db = await readDb();
@@ -1843,9 +1913,13 @@ export async function createPayment(input: {
       reference_number: input.reference_number ?? null,
       notes: input.notes ?? null,
       paid_at: input.status === "pending" ? null : new Date().toISOString(),
+      created_by: session.username,
       created_at: new Date().toISOString()
     };
     db.payments.unshift(payment);
+    if (shouldSyncStudentBalance) {
+      syncLocalConsultationPayment(db, input.student_id, input.amount, input.payment_method, input.notes ?? null);
+    }
     await writeLocalDb(db);
     await logAudit({
       action: "Payment Recorded",
@@ -1858,24 +1932,36 @@ export async function createPayment(input: {
   }
 
   const supabase = admin();
-  const { data, error } = await supabase
+  const paymentInsert = {
+    student_id: input.student_id,
+    payment_type: input.payment_type,
+    amount: input.amount,
+    currency: "KES",
+    status: input.status ?? "paid",
+    payment_method: input.payment_method,
+    reference_number: input.reference_number ?? null,
+    notes: input.notes ?? null,
+    paid_at: input.status === "pending" ? null : new Date().toISOString()
+  };
+  let { data, error } = await supabase
     .from("payments")
     .insert({
-      student_id: input.student_id,
-      payment_type: input.payment_type,
-      amount: input.amount,
-      currency: "KES",
-      status: input.status ?? "paid",
-      payment_method: input.payment_method,
-      reference_number: input.reference_number ?? null,
-      notes: input.notes ?? null,
-      paid_at: input.status === "pending" ? null : new Date().toISOString(),
+      ...paymentInsert,
       created_by: session?.username ?? null
     })
     .select("*")
     .single();
 
+  if (error && (error.code === "42703" || error.message.toLowerCase().includes("created_by"))) {
+    const retry = await supabase.from("payments").insert(paymentInsert).select("*").single();
+    data = retry.data;
+    error = retry.error;
+  }
+
   if (error) throw error;
+  if (shouldSyncStudentBalance) {
+    await syncSupabaseConsultationPayment(input.student_id, input.amount, input.payment_method, input.notes ?? null);
+  }
   await logAudit({
     action: "Payment Recorded",
     table_name: "payments",
@@ -1884,6 +1970,71 @@ export async function createPayment(input: {
     new_value: JSON.stringify(data)
   });
   return data as PaymentRecord;
+}
+
+function getConsultationPaymentSync(student: Student, amount: number, method: PaymentRecord["payment_method"], notes: string | null) {
+  const currentUpfront = student.consultation_upfront_paid ?? 0;
+  const currentBalance = student.consultation_balance_paid ?? 0;
+  let remaining = amount;
+
+  const upfrontAllocation = Math.min(Math.max(0, CONSULTATION_UPFRONT_AMOUNT - currentUpfront), remaining);
+  remaining -= upfrontAllocation;
+  const balanceAllocation = Math.min(Math.max(0, CONSULTATION_FEE - currentUpfront - upfrontAllocation - currentBalance), remaining);
+
+  const nextUpfront = currentUpfront + upfrontAllocation;
+  const nextBalance = currentBalance + balanceAllocation;
+  const totalPaid = nextUpfront + nextBalance;
+  const existingNotes = student.payment_notes ? `${student.payment_notes}\n` : "";
+  const auditLine = `${new Date().toISOString()} - Synced consultation payment of ${amount} via ${method}.${notes ? ` ${notes}` : ""}`;
+
+  return {
+    consultation_upfront_paid: nextUpfront,
+    consultation_balance_paid: nextBalance,
+    payment_status: getStudentPaymentStatus(totalPaid),
+    payment_date: new Date().toISOString().slice(0, 10),
+    payment_method: method,
+    payment_notes: `${existingNotes}${auditLine}`
+  };
+}
+
+function syncLocalConsultationPayment(
+  db: LocalDatabase,
+  studentId: string,
+  amount: number,
+  method: PaymentRecord["payment_method"],
+  notes: string | null
+) {
+  const student = db.students.find((item) => item.id === studentId);
+  if (!student) return;
+
+  const update = getConsultationPaymentSync(student, amount, method, notes);
+  const updated = {
+    ...student,
+    ...update,
+    updated_at: new Date().toISOString()
+  };
+  db.students = db.students.map((item) => (item.id === studentId ? updated : item));
+}
+
+async function syncSupabaseConsultationPayment(
+  studentId: string,
+  amount: number,
+  method: PaymentRecord["payment_method"],
+  notes: string | null
+) {
+  const student = await getStudentById(studentId);
+  if (!student) return;
+
+  const update = getConsultationPaymentSync(student, amount, method, notes);
+  const { error } = await admin()
+    .from("students")
+    .update({
+      ...update,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", studentId);
+
+  if (error) throw error;
 }
 
 export async function createReferral(input: {
@@ -3464,10 +3615,7 @@ export async function sendPaymentReminder(input: {
     throw new Error("Student not found or access denied.");
   }
 
-  const balance = Math.max(
-    0,
-    40000 - (student.consultation_upfront_paid ?? 0) - (student.consultation_balance_paid ?? 0)
-  );
+  const balance = Math.max(0, CONSULTATION_FEE - getConsultationPaid(student));
 
   const message = `Hi ${student.full_name}, this is a friendly reminder from Barak Pathways. You have an outstanding balance of KES ${balance.toLocaleString(
     "en-KE"
@@ -3571,7 +3719,7 @@ export async function recordTrackedStudentPayment(input: {
       ? (student.consultation_balance_paid ?? 0) + input.amountPaid
       : student.consultation_balance_paid ?? 0;
   const totalPaid = nextConsultationUpfront + nextConsultationBalance;
-  const paymentAmount = student.payment_amount ?? 20000;
+  const paymentAmount = getTrackedPaymentTarget(student);
   const trackedPaid = (student.payment_paid ?? 0) + input.amountPaid;
   const nextPaymentStatus =
     trackedPaid >= paymentAmount
@@ -3582,7 +3730,7 @@ export async function recordTrackedStudentPayment(input: {
   const existingNotes = student.payment_notes ? `${student.payment_notes}\n` : "";
   const auditLine = `${new Date().toISOString()} - Paid ${input.amountPaid} via ${input.paymentMethod}. ${input.notes ?? ""}`.trim();
 
-  const updatedStudent = await updateStudent(input.studentId, {
+  const studentUpdate: Partial<Student> = {
     consultation_upfront_paid: nextConsultationUpfront,
     consultation_balance_paid: nextConsultationBalance,
     payment_paid: trackedPaid,
@@ -3590,7 +3738,15 @@ export async function recordTrackedStudentPayment(input: {
     payment_method: input.paymentMethod,
     payment_status: nextPaymentStatus,
     payment_notes: `${existingNotes}${auditLine}`
-  });
+  };
+
+  if (input.paymentType === "IELTS Fee") {
+    studentUpdate.ielts_enrolled = true;
+    studentUpdate.ielts_amount = Math.max(student.ielts_amount ?? 0, input.amountPaid);
+    studentUpdate.ielts_payment_status = "paid";
+  }
+
+  const updatedStudent = await updateStudent(input.studentId, studentUpdate);
 
   await createPayment({
     student_id: input.studentId,
@@ -3604,7 +3760,8 @@ export async function recordTrackedStudentPayment(input: {
     payment_method: input.paymentMethod,
     status: "paid",
     reference_number: null,
-    notes: input.notes ?? `${input.paymentType} recorded from payment tracker.`
+    notes: input.notes ?? `${input.paymentType} recorded from payment tracker.`,
+    syncStudentBalance: false
   });
 
   await logAudit({

@@ -8,13 +8,6 @@ import { getStudentById, getStudentNotes, getStudents } from "@/lib/data";
 import type { Student, StudentStage } from "@/lib/types";
 import { formatCurrency, formatDate, normalizeKenyanPhone } from "@/lib/utils";
 
-const legacyReportStages: Array<{ key: StudentStage; name: string; icon: string; color: string }> = [
-  { key: "lead", name: "Lead", icon: "👤", color: "#6B7280" },
-  { key: "consultation", name: "Consultation", icon: "💬", color: "#3B82F6" },
-  { key: "application", name: "Application", icon: "📝", color: "#8B5CF6" },
-  { key: "visa", name: "Visa", icon: "✈️", color: "#EC4899" }
-];
-
 const reportStages: Array<{ key: StudentStage; name: string; icon: string; color: string }> = [
   { key: "lead", name: "Lead", icon: personOutline, color: "#6B7280" },
   { key: "consultation", name: "Consultation", icon: chatbubbleEllipsesOutline, color: "#3B82F6" },
@@ -24,6 +17,8 @@ const reportStages: Array<{ key: StudentStage; name: string; icon: string; color
 
 type ViewMode = "list" | "bulk" | "individual";
 type QuickFilter = "all" | "urgent" | "new" | "unpaid";
+const validViewModes = new Set<ViewMode>(["list", "bulk", "individual"]);
+const validQuickFilters = new Set<QuickFilter>(["all", "urgent", "new", "unpaid"]);
 
 function parseDate(value: string | undefined, fallback: string) {
   return value && value.length > 0 ? value : fallback;
@@ -129,10 +124,16 @@ export default async function ProgressReportsPage({
   }>;
 }) {
   const params = await searchParams;
-  const stageFilter = (params.stage as StudentStage | undefined) ?? "lead";
+  const stageFilter = reportStages.some((stage) => stage.key === params.stage)
+    ? (params.stage as StudentStage)
+    : "lead";
   const studentId = params.student_id;
-  const view = (params.view as ViewMode | undefined) ?? "list";
-  const quickFilter = (params.quick_filter as QuickFilter | undefined) ?? "all";
+  const view = validViewModes.has(params.view as ViewMode)
+    ? (params.view as ViewMode)
+    : "list";
+  const quickFilter = validQuickFilters.has(params.quick_filter as QuickFilter)
+    ? (params.quick_filter as QuickFilter)
+    : "all";
   const range = params.range;
 
   let dateFrom = parseDate(params.date_from, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
@@ -169,8 +170,8 @@ export default async function ProgressReportsPage({
       title="Client Progress Report"
       description="Track leads, consultations, and student progress with stage and date based reporting."
     >
-      <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
-        <div className="flex flex-col gap-4 bg-[#0f172a] px-8 py-6 text-white dark:bg-[linear-gradient(135deg,#09111f,#15223a)] lg:flex-row lg:items-end lg:justify-between">
+      <section className="overflow-hidden rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638]">
+        <div className="flex flex-col gap-4 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:bg-[linear-gradient(135deg,#213343,#3f5a68)] lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="font-serif text-3xl">{selectedStageMeta.name} Stage Report</h2>
             <p className="mt-2 text-sm text-white/70">
@@ -195,7 +196,7 @@ export default async function ProgressReportsPage({
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 px-8 pt-4 dark:border-white/10">
+        <div className="flex flex-wrap gap-2 border-b border-[#eadacc] px-8 pt-4 dark:border-white/10">
           <Link href={`/progress-reports?view=list&stage=${stageFilter}&date_from=${dateFrom}&date_to=${dateTo}`} className={`rounded-t-xl px-4 py-3 text-sm font-medium ${view === "list" ? "border-b-2 border-gold text-gold dark:text-[#ffb89e]" : "text-slate-500 dark:text-slate-400"}`}>
             List View
           </Link>
@@ -221,14 +222,14 @@ export default async function ProgressReportsPage({
 
         {view === "individual" && individualStudent ? (
           <div className="space-y-8 px-8 py-8">
-            <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 dark:border-white/10 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-4 border-b border-[#eadacc] pb-6 dark:border-white/10 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h3 className="font-serif text-4xl text-ink dark:text-white">{individualStudent.full_name}</h3>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
                   Stage: {individualStudent.stage} | Created: {formatDate(individualStudent.created_at)}
                 </p>
               </div>
-              <Link href={`/progress-reports?view=list&stage=${stageFilter}&date_from=${dateFrom}&date_to=${dateTo}`} className="inline-flex rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 dark:border-white/10 dark:text-slate-200">
+              <Link href={`/progress-reports?view=list&stage=${stageFilter}&date_from=${dateFrom}&date_to=${dateTo}`} className="inline-flex rounded-xl border border-[#eadacc] px-4 py-2.5 text-sm font-medium text-slate-700 dark:border-white/10 dark:text-slate-200">
                 Back to List
               </Link>
             </div>
@@ -244,40 +245,40 @@ export default async function ProgressReportsPage({
 
               return (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Follow-up Priority</p>
                     <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase ${tone}`}>
                       {priority}
                     </span>
                     <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{reason}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Phone</p>
                     <p className="mt-3 text-lg font-semibold text-ink dark:text-white">{individualStudent.phone ?? "Not set"}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Email</p>
                     <p className="mt-3 text-lg font-semibold text-ink dark:text-white">{individualStudent.email}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Destination</p>
                     <p className="mt-3 text-lg font-semibold text-ink dark:text-white">{individualStudent.country_interest ?? "Not specified"}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Program</p>
                     <p className="mt-3 text-lg font-semibold text-ink dark:text-white">{individualStudent.program_level ?? "Not specified"}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Total Paid</p>
                     <p className="mt-3 text-lg font-semibold text-ink dark:text-white">
                       {formatCurrency(individualStudent.consultation_upfront_paid + individualStudent.consultation_balance_paid)}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Last Updated</p>
                     <p className="mt-3 text-lg font-semibold text-ink dark:text-white">{formatDate(individualStudent.updated_at)}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+                  <div className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-5 dark:border-white/10 dark:bg-white/[0.05]">
                     <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">Lead Source</p>
                     <p className="mt-3 text-lg font-semibold text-ink dark:text-white">{individualStudent.lead_source ?? "Direct"}</p>
                   </div>
@@ -285,12 +286,12 @@ export default async function ProgressReportsPage({
               );
             })()}
 
-            <Card className="border-slate-200 bg-slate-50/70 dark:border-white/10 dark:bg-white/[0.04]">
+            <Card className="border-[#eadacc] bg-[#fffaf5] dark:border-white/10 dark:bg-white/[0.04]">
               <CardHeader title="Progress History" description="Synthesized interaction timeline from the student record and notes." />
               <div className="space-y-4">
                 {history.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-300">No history recorded yet.</p> : null}
                 {history.map((item, index) => (
-                  <div key={`${item.date}-${index}`} className="flex gap-4 border-b border-slate-200 pb-4 last:border-b-0 dark:border-white/10">
+                  <div key={`${item.date}-${index}`} className="flex gap-4 border-b border-[#eadacc] pb-4 last:border-b-0 dark:border-white/10">
                     <div className="min-w-[140px] text-sm text-slate-500 dark:text-slate-400">
                       {formatDate(item.date, { dateStyle: "medium", timeStyle: "short" })}
                     </div>
@@ -321,20 +322,20 @@ export default async function ProgressReportsPage({
           </div>
         ) : (
           <>
-            <div className="grid gap-4 bg-slate-50 px-8 py-8 dark:bg-white/[0.03] md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
+            <div className="grid gap-4 bg-[#fff6ef] px-8 py-8 dark:bg-white/[0.03] md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-[#eadacc] bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
                 <p className="text-4xl font-semibold text-gold">{stats.total}</p>
                 <p className="mt-2 text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Total {selectedStageMeta.name}s</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
+              <div className="rounded-2xl border border-[#eadacc] bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
                 <p className="text-4xl font-semibold text-gold">{stats.activeLast7Days}</p>
                 <p className="mt-2 text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Active (7 Days)</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
+              <div className="rounded-2xl border border-[#eadacc] bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
                 <p className="text-4xl font-semibold text-gold">{stats.paid}</p>
                 <p className="mt-2 text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Made Payment</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
+              <div className="rounded-2xl border border-[#eadacc] bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.05]">
                 <p className="text-4xl font-semibold text-gold">{formatCurrency(stats.avgPayment)}</p>
                 <p className="mt-2 text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Avg Payment</p>
               </div>
@@ -345,7 +346,7 @@ export default async function ProgressReportsPage({
                 {stageStudents.map((student) => {
                   const [priority, reason] = getFollowUpPriority(student);
                   return (
-                    <Card key={student.id} className="border-slate-200 dark:border-white/10 dark:bg-white/[0.05]">
+                    <Card key={student.id} className="border-[#eadacc] dark:border-white/10 dark:bg-white/[0.05]">
                       <p className="font-semibold text-ink dark:text-white">{student.full_name}</p>
                       <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{student.email}</p>
                       <div className="mt-4 flex flex-wrap gap-2 text-xs">
@@ -371,7 +372,7 @@ export default async function ProgressReportsPage({
               <div className="overflow-x-auto px-8 pb-8">
                 <table className="min-w-full border-collapse">
                   <thead>
-                    <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                    <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                       <th className="px-4 py-3">Priority</th>
                       <th className="px-4 py-3">Student</th>
                       <th className="px-4 py-3">Contact</th>
@@ -401,7 +402,7 @@ export default async function ProgressReportsPage({
                             : "bg-emerald-50 text-emerald-700";
 
                       return (
-                        <tr key={student.id} className="border-b border-slate-200 hover:bg-gold/5 dark:border-white/10 dark:hover:bg-white/[0.04]">
+                        <tr key={student.id} className="border-b border-[#eadacc] hover:bg-gold/5 dark:border-white/10 dark:hover:bg-white/[0.04]">
                           <td className="px-4 py-4">
                             <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${tone}`}>
                               {priority}

@@ -133,7 +133,7 @@ export default async function HrDashboardPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Oversight Alerts"
               description="The fastest read on areas that need HR or leadership attention."
@@ -143,7 +143,7 @@ export default async function HrDashboardPage() {
                 <Link
                   key={alert.title}
                   href={alert.href}
-                  className={`rounded-3xl border p-5 transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(33,51,67,0.08)] ${
+                  className={`rounded-xl border p-5 transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(33,51,67,0.08)] ${
                     alert.tone === "warning"
                       ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100"
                       : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100"
@@ -163,13 +163,13 @@ export default async function HrDashboardPage() {
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader title="Team Coverage" description="User distribution by role and active status." />
             <div className="space-y-3">
               {Object.entries(roleCounts).map(([role, count]) => (
                 <div
                   key={role}
-                  className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]"
+                  className="flex items-center justify-between rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]"
                 >
                   <span className="capitalize text-slate-600 dark:text-slate-300">{role.replace(/_/g, " ")}</span>
                   <span className="font-semibold text-ink dark:text-white">{count}</span>
@@ -180,7 +180,7 @@ export default async function HrDashboardPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-3">
-          <Card className="xl:col-span-2 dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="xl:col-span-2 dark:border-white/10 dark:bg-[#182638]">
             <CardHeader
               title="Team Workload"
               description="Assigned student ownership and task load across active users."
@@ -188,7 +188,7 @@ export default async function HrDashboardPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-[0.14em] text-slate-400 dark:border-white/10">
+                  <tr className="border-b border-[#f0dfd0] text-left text-xs uppercase tracking-[0.14em] text-slate-400 dark:border-white/10">
                     <th className="px-3 py-3">Team Member</th>
                     <th className="px-3 py-3">Role</th>
                     <th className="px-3 py-3">Students</th>
@@ -198,7 +198,7 @@ export default async function HrDashboardPage() {
                 </thead>
                 <tbody>
                   {teamWorkload.map(({ user, students: studentCount, tasks: taskCount }) => (
-                    <tr key={user.id} className="border-b border-slate-100 dark:border-white/10">
+                    <tr key={user.id} className="border-b border-[#f0dfd0] dark:border-white/10">
                       <td className="px-3 py-4 font-medium text-ink dark:text-white">{user.full_name}</td>
                       <td className="px-3 py-4 capitalize text-slate-500 dark:text-slate-300">{user.role.replace(/_/g, " ")}</td>
                       <td className="px-3 py-4 text-slate-600 dark:text-slate-300">{studentCount}</td>
@@ -215,7 +215,7 @@ export default async function HrDashboardPage() {
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader title="Quick Oversight" description="Jump into the main areas HR will monitor." />
             <div className="space-y-2">
               <QuickLink href="/hr-dashboard/team" label="Team & Roles" icon={<Users2 className="h-4 w-4" />} />
@@ -225,13 +225,13 @@ export default async function HrDashboardPage() {
           </Card>
         </div>
 
-        <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+        <Card className="dark:border-white/10 dark:bg-[#182638]">
           <CardHeader title="Recent CRM Activity" description="Latest audit records across the system." />
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {auditLogs.slice(0, 9).map((item) => (
               <div
                 key={item.id}
-                className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.05]"
+                className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.05]"
               >
                 <p className="font-medium text-ink dark:text-white">{item.action}</p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{item.record_label ?? item.table_name}</p>
@@ -266,10 +266,10 @@ function MetricCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_18px_36px_rgba(33,51,67,0.07)] dark:border-white/10 dark:bg-[#0d1729]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-[0_18px_36px_rgba(33,51,67,0.07)] dark:border-white/10 dark:bg-[#182638]">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{label}</p>
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#173042] text-white dark:bg-[#ff7a59]/15 dark:text-[#ffbeab]">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#213343] text-white dark:bg-[#ff7a59]/15 dark:text-[#ffbeab]">
           {icon}
         </div>
       </div>
@@ -283,7 +283,7 @@ function QuickLink({ href, label, icon }: { href: Route; label: string; icon: Re
   return (
     <Link
       href={href}
-      className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm font-medium text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:hover:bg-white/[0.08]"
+      className="flex items-center justify-between rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] px-4 py-3 text-sm font-medium text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:hover:bg-white/[0.08]"
     >
       <span className="flex items-center gap-2">
         {icon}
@@ -296,7 +296,7 @@ function QuickLink({ href, label, icon }: { href: Route; label: string; icon: Re
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white px-5 py-4 dark:border-white/10 dark:bg-[#0d1729]">
+    <div className="rounded-xl border border-[#eadacc] bg-white px-5 py-4 dark:border-white/10 dark:bg-[#182638]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{label}</p>
       <p className="mt-3 text-2xl font-semibold text-ink dark:text-white">{value}</p>
     </div>

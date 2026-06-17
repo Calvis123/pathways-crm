@@ -16,7 +16,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const payload = schema.parse(await request.json());
+    const payload = schema.parse(await request.json().catch(() => null));
     const user = await authenticateUser(payload.email, payload.password);
 
     if (!user) {
@@ -52,9 +52,18 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Enter a valid email address and password." },
+        { status: 400 }
+      );
+    }
+
+    console.error("Login failed", error);
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error." },
-      { status: 400 }
+      { error: error instanceof Error ? error.message : "Could not sign in. Please try again." },
+      { status: 500 }
     );
   }
 }

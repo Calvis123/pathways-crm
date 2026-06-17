@@ -1,6 +1,7 @@
 import { FinancialToolsManager } from "@/components/tables/financial-tools-manager";
 import { getExpenses, getPayments, getStudents } from "@/lib/data";
 import { getCurrentSession } from "@/lib/auth";
+import { getConsultationBalance, getConsultationPaid } from "@/lib/finance";
 import type { ExpenseCategory } from "@/lib/types";
 
 function dateOnly(value: string | null | undefined) {
@@ -66,10 +67,7 @@ export default async function FinancialToolsPage({
 
   const creditRecords = students
     .map((student) => {
-      const amountOwed = Math.max(
-        0,
-        40000 - (student.consultation_upfront_paid ?? 0) - (student.consultation_balance_paid ?? 0)
-      );
+      const amountOwed = getConsultationBalance(student);
 
       const daysOverdue = student.payment_due_date
         ? Math.floor(
@@ -81,6 +79,7 @@ export default async function FinancialToolsPage({
       return {
         id: student.id,
         full_name: student.full_name,
+        email: student.email,
         phone: student.phone,
         amount_owed: amountOwed,
         payment_due_date: student.payment_due_date ?? null,
@@ -99,7 +98,7 @@ export default async function FinancialToolsPage({
   const totalPaidStudents = students.filter((student) => ["full", "paid"].includes(student.payment_status ?? "")).length;
   const totalPartialStudents = students.filter((student) =>
     ["partial", "installment", "pending"].includes(student.payment_status ?? "") &&
-    ((student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0) > 0)
+    getConsultationPaid(student) > 0
   ).length;
   const collectionRate = totalStudents > 0 ? ((totalPaidStudents + totalPartialStudents) / totalStudents) * 100 : 0;
 
@@ -155,10 +154,7 @@ export default async function FinancialToolsPage({
       id: student.id,
       full_name: student.full_name,
       payment_due_date: student.payment_due_date ?? "",
-      amount_owed: Math.max(
-        0,
-        40000 - (student.consultation_upfront_paid ?? 0) - (student.consultation_balance_paid ?? 0)
-      )
+      amount_owed: getConsultationBalance(student)
     }))
     .filter(
       (student) =>

@@ -1,7 +1,9 @@
 import { FinancialReportsManager } from "@/components/tables/financial-reports-manager";
 import { getExpenses, getPayments, getStudents } from "@/lib/data";
+import { CONSULTATION_FEE, getConsultationBalance, getConsultationPaid } from "@/lib/finance";
 
 type ReportType = "overview" | "cashflow" | "credit" | "expenses";
+const validReportTypes = new Set<ReportType>(["overview", "cashflow", "credit", "expenses"]);
 
 function dateOnly(value: string | null | undefined) {
   if (!value) return null;
@@ -34,7 +36,9 @@ export default async function FinancialReportsPage({
   }>;
 }) {
   const params = await searchParams;
-  const reportType = (params.report as ReportType | undefined) ?? "overview";
+  const reportType = validReportTypes.has(params.report as ReportType)
+    ? (params.report as ReportType)
+    : "overview";
   const startDate =
     params.start_date ??
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
@@ -121,9 +125,8 @@ export default async function FinancialReportsPage({
 
   const balances = students
     .map((student) => {
-      const consultationFee = 40000;
-      const paid = (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
-      const balance = consultationFee - paid;
+      const paid = getConsultationPaid(student);
+      const balance = getConsultationBalance(student);
       const daysOverdue =
         student.payment_due_date && new Date(`${student.payment_due_date}T00:00:00`).getTime() < Date.now()
           ? Math.floor(
@@ -137,14 +140,14 @@ export default async function FinancialReportsPage({
         phone: student.phone,
         payment_due_date: student.payment_due_date ?? null,
         paid,
-        balance: balance > 0 ? balance : 0,
+        balance,
         days_overdue: daysOverdue
       };
     })
     .filter((student) => student.balance > 0);
 
   const creditExposure = balances.reduce((sum, student) => sum + student.balance, 0);
-  const totalBilled = balances.length * 40000;
+  const totalBilled = balances.length * CONSULTATION_FEE;
   const totalPaid = balances.reduce((sum, student) => sum + student.paid, 0);
   const overdueStudents = balances
     .filter((student) => student.days_overdue > 0 && student.payment_due_date)

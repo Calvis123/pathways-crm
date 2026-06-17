@@ -325,56 +325,7 @@ export const mockPayments: PaymentRecord[] = [
   }
 ];
 
-export const mockUsers: AppUserRecord[] = [
-  {
-    id: "10000000-0000-0000-0000-000000000001",
-    username: "admin",
-    password: "barak123",
-    full_name: "Amina Admin",
-    email: "admin@barakpathways.com",
-    role: "admin",
-    status: "active",
-    phone: "+254700111111",
-    last_login_at: "2026-04-02T08:00:00.000Z",
-    created_at: "2026-01-10T08:00:00.000Z"
-  },
-  {
-    id: "10000000-0000-0000-0000-000000000200",
-    username: "hr",
-    password: "barak123",
-    full_name: "Hannah HR",
-    email: "hr@barakpathways.com",
-    role: "hr",
-    status: "active",
-    phone: "+254700222200",
-    last_login_at: null,
-    created_at: "2026-01-10T08:00:00.000Z"
-  },
-  {
-    id: "10000000-0000-0000-0000-000000000003",
-    username: "consultant",
-    password: "barak123",
-    full_name: "Caleb Consultant",
-    email: "consultant@barakpathways.com",
-    role: "consultant",
-    status: "active",
-    phone: "+254700222222",
-    last_login_at: "2026-04-02T08:10:00.000Z",
-    created_at: "2026-01-10T08:00:00.000Z"
-  },
-  {
-    id: "10000000-0000-0000-0000-000000000004",
-    username: "operations",
-    password: "barak123",
-    full_name: "Oscar Operations",
-    email: "operations@barakpathways.com",
-    role: "operations",
-    status: "active",
-    phone: "+254700333333",
-    last_login_at: "2026-04-01T17:20:00.000Z",
-    created_at: "2026-01-10T08:00:00.000Z"
-  }
-];
+export const mockUsers: AppUserRecord[] = [];
 
 export const mockReferrals: ReferralRecord[] = [
   {

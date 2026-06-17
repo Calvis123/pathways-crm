@@ -8,7 +8,7 @@ export function RecentActivity({ items }: { items: AuditLog[] }) {
       <CardHeader title="Audit Trail" description="Critical changes are logged here, similar to the legacy `audit_logs` module." />
       <div className="space-y-3">
         {items.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+          <div key={item.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-medium text-ink">{item.action}</p>

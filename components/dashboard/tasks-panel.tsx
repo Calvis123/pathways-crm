@@ -12,11 +12,11 @@ const priorityTone: Record<string, string> = {
 
 export function TasksPanel({ tasks }: { tasks: Task[] }) {
   return (
-    <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+    <Card className="dark:border-white/10 dark:bg-[#182638]">
       <CardHeader title="Tasks" description="For reminders, assignments, and operational follow-up." />
       <div className="space-y-3">
         {tasks.slice(0, 6).map((task) => (
-          <div key={task.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+          <div key={task.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.05]">
             <div className="flex items-center justify-between gap-3">
               <p className="font-medium text-ink dark:text-white">{task.title}</p>
               <Badge className={priorityTone[task.priority]}>{task.priority}</Badge>

@@ -37,10 +37,10 @@ export function HrSectionNav() {
         <Link
           key={item.href}
           href={item.href}
-          className="rounded-3xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#efc3a5] hover:shadow-[0_16px_34px_rgba(33,51,67,0.08)] dark:border-white/10 dark:bg-[#0d1729] dark:hover:border-[#ff7a59]/30"
+          className="rounded-xl border border-[#eadacc] bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#efc3a5] hover:shadow-[0_16px_34px_rgba(33,51,67,0.08)] dark:border-white/10 dark:bg-[#182638] dark:hover:border-[#ff7a59]/30"
         >
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#173042] text-white dark:bg-[#ff7a59]/15 dark:text-[#ffbeab]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#213343] text-white dark:bg-[#ff7a59]/15 dark:text-[#ffbeab]">
               {item.icon}
             </span>
             <p className="font-semibold text-ink dark:text-white">{item.label}</p>

@@ -98,6 +98,7 @@ create table if not exists public.payments (
   reference_number text,
   notes text,
   paid_at timestamptz,
+  created_by text,
   created_at timestamptz not null default now()
 );
 
@@ -266,6 +267,7 @@ alter table public.students add column if not exists commission_due_date date;
 alter table public.students add column if not exists commission_paid_date date;
 alter table public.students add column if not exists commission_institution text;
 alter table public.students add column if not exists commission_notes text;
+alter table public.payments add column if not exists created_by text;
 
 alter table public.students enable row level security;
 alter table public.consultations enable row level security;

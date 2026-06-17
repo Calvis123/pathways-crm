@@ -7,6 +7,7 @@ import { BrandLogo } from "@/components/branding/brand-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { StudentPortalAccessCard } from "@/components/portal/student-portal-access-card";
 import { Card, CardHeader } from "@/components/ui/card";
+import { CONSULTATION_FEE, getConsultationBalance, getConsultationPaid } from "@/lib/finance";
 import type { DocumentRecord, PaymentRecord, PortalMessage, Student, StudentNote } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -141,12 +142,17 @@ export function StudentPortalDashboard({
   const { student, documents, notes, messages, payments } = snapshot;
   const stageIndex = Math.max(stageLabels.findIndex((stage) => stage.key === student.stage), 0);
   const progress = Math.round(((stageIndex + 1) / stageLabels.length) * 100);
-  const totalPaid = student.consultation_upfront_paid + student.consultation_balance_paid;
-  const remaining = Math.max(40000 - totalPaid, 0);
+  const totalPaid = getConsultationPaid(student);
+  const remaining = getConsultationBalance(student);
+  const paymentProgress = Math.min(100, Math.round((totalPaid / CONSULTATION_FEE) * 100));
+  const paymentMessage = `Hi Barak Pathways, I am ${student.full_name}. I want to complete my outstanding balance of ${formatCurrency(remaining)}.`;
+  const recentPayments = [...payments].sort((a, b) =>
+    (b.paid_at ?? b.created_at).localeCompare(a.paid_at ?? a.created_at)
+  );
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fffaf4_0%,#f9f6f0_38%,#f5f7fb_100%)] dark:bg-[linear-gradient(180deg,#07101d_0%,#0c1627_38%,#101b30_100%)]">
-      <header className="overflow-hidden border-b border-[#eadbcf] bg-[radial-gradient(circle_at_top_left,rgba(255,122,89,0.14),transparent_24%),linear-gradient(135deg,#fffaf4_0%,#fff1e7_46%,#fff7f1_100%)] text-[#173042] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,122,89,0.16),transparent_24%),linear-gradient(135deg,#0b1424_0%,#132037_46%,#182845_100%)] dark:text-white">
+      <header className="overflow-hidden border-b border-[#eadbcf] bg-[radial-gradient(circle_at_top_left,rgba(255,122,89,0.14),transparent_24%),linear-gradient(135deg,#fffaf4_0%,#fff1e7_46%,#fff7f1_100%)] text-[#213343] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,122,89,0.16),transparent_24%),linear-gradient(135deg,#172434_0%,#132037_46%,#182845_100%)] dark:text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-6">
           <div className="flex items-center gap-4">
             <BrandLogo imageClassName="w-[148px] px-3 py-2 shadow-[0_16px_30px_rgba(15,23,42,0.12)] dark:shadow-[0_16px_30px_rgba(15,23,42,0.16)]" />
@@ -156,11 +162,11 @@ export function StudentPortalDashboard({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle className="border-[#e7d3c4] bg-white/90 text-[#173042] hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/16" />
+            <ThemeToggle className="border-[#e7d3c4] bg-white/90 text-[#213343] hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/16" />
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center rounded-2xl border border-[#e7d3c4] bg-white/92 px-4 py-2 text-sm font-medium text-[#173042] shadow-[0_12px_24px_rgba(33,51,67,0.06)] hover:bg-white dark:border-white/10 dark:bg-white/12 dark:text-white dark:ring-1 dark:ring-white/12"
+              className="inline-flex items-center rounded-2xl border border-[#e7d3c4] bg-white/92 px-4 py-2 text-sm font-medium text-[#213343] shadow-[0_12px_24px_rgba(33,51,67,0.06)] hover:bg-white dark:border-white/10 dark:bg-white/12 dark:text-white dark:ring-1 dark:ring-white/12"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Logout
@@ -173,7 +179,7 @@ export function StudentPortalDashboard({
         {success ? <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-200">{success}</p> : null}
         {error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/12 dark:text-rose-200">{error}</p> : null}
 
-        <section className="overflow-hidden rounded-[2rem] border border-[#eadfd4] bg-white/95 p-6 shadow-panel dark:border-white/10 dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)] dark:shadow-[0_24px_60px_rgba(2,6,23,0.34)]">
+        <section className="overflow-hidden rounded-xl border border-[#eadfd4] bg-white/95 p-6 shadow-panel dark:border-white/10 dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)] dark:shadow-[0_24px_60px_rgba(2,6,23,0.34)]">
           <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#c9692c] dark:text-[#ffcfbf]">Your journey overview</p>
@@ -212,7 +218,7 @@ export function StudentPortalDashboard({
                       ? "border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10"
                       : isActive
                         ? "border-[#ffb089] bg-[#fff4ea] dark:border-[#ffb089]/50 dark:bg-[#ff7a59]/10"
-                        : "border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5"
+                        : "border-[#eadacc] bg-[#fff6ef] dark:border-white/10 dark:bg-white/5"
                   }`}
                 >
                   <p className="text-2xl">{stage.icon}</p>
@@ -230,7 +236,7 @@ export function StudentPortalDashboard({
             <form className="grid gap-4 md:grid-cols-3" onSubmit={handleConsultationRequest}>
               <input
                 type="date"
-                className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#162236] dark:text-white"
+                className="rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#162236] dark:text-white"
                 value={consultationForm.preferred_date}
                 onChange={(event) =>
                   setConsultationForm((current) => ({ ...current, preferred_date: event.target.value }))
@@ -239,7 +245,7 @@ export function StudentPortalDashboard({
               />
               <input
                 type="time"
-                className="rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#162236] dark:text-white"
+                className="rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#162236] dark:text-white"
                 value={consultationForm.preferred_time}
                 onChange={(event) =>
                   setConsultationForm((current) => ({ ...current, preferred_time: event.target.value }))
@@ -249,7 +255,7 @@ export function StudentPortalDashboard({
               <button
                 type="submit"
                 disabled={isPending}
-                className="rounded-2xl bg-[linear-gradient(135deg,#173042,#2a5167)] px-4 py-3 font-semibold text-white dark:bg-[linear-gradient(135deg,#ff7a59,#cf6a34)] dark:shadow-[0_18px_34px_rgba(255,122,89,0.2)]"
+                className="rounded-2xl bg-[linear-gradient(135deg,#213343,#2a5167)] px-4 py-3 font-semibold text-white dark:bg-[linear-gradient(135deg,#ff7a59,#cf6a34)] dark:shadow-[0_18px_34px_rgba(255,122,89,0.2)]"
               >
                 {isPending ? "Requesting..." : "Request Consultation"}
               </button>
@@ -263,12 +269,12 @@ export function StudentPortalDashboard({
             <form className="space-y-4" onSubmit={handleProfileSave}>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-white">Email</span>
-                <input value={student.email} disabled className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/5 dark:text-slate-200" />
+                <input value={student.email} disabled className="w-full rounded-2xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/5 dark:text-slate-200" />
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-white">Phone Number</span>
                 <input
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
+                  className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
                   value={profileForm.phone}
                   onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))}
                 />
@@ -276,7 +282,7 @@ export function StudentPortalDashboard({
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-white">Country</span>
                 <select
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
+                  className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
                   value={profileForm.country_interest}
                   onChange={(event) =>
                     setProfileForm((current) => ({ ...current, country_interest: event.target.value }))
@@ -292,7 +298,7 @@ export function StudentPortalDashboard({
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-white">Program</span>
                 <select
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
+                  className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
                   value={profileForm.program_level}
                   onChange={(event) =>
                     setProfileForm((current) => ({ ...current, program_level: event.target.value }))
@@ -308,7 +314,7 @@ export function StudentPortalDashboard({
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-white">Target University</span>
                 <input
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
+                  className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
                   value={profileForm.university_name}
                   onChange={(event) =>
                     setProfileForm((current) => ({ ...current, university_name: event.target.value }))
@@ -318,7 +324,7 @@ export function StudentPortalDashboard({
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full rounded-2xl bg-[linear-gradient(135deg,#173042,#2a5167)] px-4 py-3 font-semibold text-white dark:bg-[linear-gradient(135deg,#ff7a59,#cf6a34)] dark:shadow-[0_18px_34px_rgba(255,122,89,0.2)]"
+                className="w-full rounded-2xl bg-[linear-gradient(135deg,#213343,#2a5167)] px-4 py-3 font-semibold text-white dark:bg-[linear-gradient(135deg,#ff7a59,#cf6a34)] dark:shadow-[0_18px_34px_rgba(255,122,89,0.2)]"
               >
                 {isPending ? "Saving..." : "Update Profile"}
               </button>
@@ -328,21 +334,39 @@ export function StudentPortalDashboard({
           <Card className="dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)]">
             <CardHeader title="Payment Status" description="Live view of your consultation and IELTS balances." />
             <div className="space-y-4 text-sm">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-white/10">
+              <div className="flex items-center justify-between border-b border-[#f0dfd0] pb-3 dark:border-white/10">
                 <span className="text-slate-500 dark:text-slate-400">Consultation Fee</span>
-                <span className="font-semibold text-ink dark:text-white">KES 40,000</span>
+                <span className="font-semibold text-ink dark:text-white">{formatCurrency(CONSULTATION_FEE)}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-white/10">
+              <div>
+                <div className="mb-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>Payment progress</span>
+                  <span>{paymentProgress}%</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e_0%,#d7a85b_100%)]"
+                    style={{ width: `${paymentProgress}%` }}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between border-b border-[#f0dfd0] pb-3 dark:border-white/10">
                 <span className="text-slate-500 dark:text-slate-400">Amount Paid</span>
-                <span className="font-semibold text-emerald-600">KES {totalPaid.toLocaleString()}</span>
+                <span className="font-semibold text-emerald-600">{formatCurrency(totalPaid)}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-white/10">
+              <div className="flex items-center justify-between border-b border-[#f0dfd0] pb-3 dark:border-white/10">
                 <span className="text-slate-500 dark:text-slate-400">Remaining Balance</span>
                 <span className={`font-semibold ${remaining > 0 ? "text-amber-600" : "text-emerald-600"}`}>
-                  KES {remaining.toLocaleString()}
+                  {formatCurrency(remaining)}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-white/10">
+              <div className="flex items-center justify-between border-b border-[#f0dfd0] pb-3 dark:border-white/10">
+                <span className="text-slate-500 dark:text-slate-400">Due Date</span>
+                <span className={`font-semibold ${student.payment_due_date && remaining > 0 ? "text-ink dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
+                  {student.payment_due_date ? formatDate(student.payment_due_date) : "Not set"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-b border-[#f0dfd0] pb-3 dark:border-white/10">
                 <span className="text-slate-500 dark:text-slate-400">Status</span>
                 <span className={`font-semibold ${remaining > 0 ? "text-amber-600" : "text-emerald-600"}`}>
                   {remaining > 0 ? "Partial Payment" : "Fully Paid"}
@@ -350,7 +374,7 @@ export function StudentPortalDashboard({
               </div>
               {student.ielts_enrolled ? (
                 <>
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-white/10">
+                  <div className="flex items-center justify-between border-b border-[#f0dfd0] pb-3 dark:border-white/10">
                     <span className="text-slate-500 dark:text-slate-400">IELTS Training Fee</span>
                     <span className="font-semibold text-ink dark:text-white">{formatCurrency(student.ielts_amount ?? 0)}</span>
                   </div>
@@ -366,7 +390,7 @@ export function StudentPortalDashboard({
                 <div className="rounded-2xl bg-blue-50 p-4 text-center dark:border dark:border-sky-400/15 dark:bg-[linear-gradient(180deg,#17253a_0%,#122033_100%)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                   <p className="mb-3 text-sm text-blue-700 dark:text-[#d7e7fb]">To complete your payment, contact us via WhatsApp.</p>
                   <a
-                    href="https://wa.me/254113043315"
+                    href={`https://wa.me/254113043315?text=${encodeURIComponent(paymentMessage)}`}
                     className="inline-flex rounded-2xl bg-[#25d366] px-4 py-3 font-semibold text-white shadow-[0_14px_28px_rgba(37,211,102,0.22)] dark:shadow-[0_16px_30px_rgba(37,211,102,0.16)]"
                     target="_blank"
                     rel="noreferrer"
@@ -391,7 +415,7 @@ export function StudentPortalDashboard({
                   className={`rounded-2xl border-2 p-4 text-center ${
                     existing
                       ? "border-emerald-400 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10"
-                      : "border-dashed border-slate-300 bg-slate-50 dark:border-white/15 dark:bg-white/5"
+                      : "border-dashed border-[#d9c6b8] bg-[#fff6ef] dark:border-white/15 dark:bg-white/5"
                   }`}
                 >
                   <p className="text-3xl">{doc.icon}</p>
@@ -401,7 +425,7 @@ export function StudentPortalDashboard({
                   </p>
                   <button
                     type="button"
-                    className="mt-4 rounded-xl bg-[linear-gradient(135deg,#173042,#2a5167)] px-3 py-2 text-xs font-semibold text-white"
+                    className="mt-4 rounded-xl bg-[linear-gradient(135deg,#213343,#2a5167)] px-3 py-2 text-xs font-semibold text-white"
                     onClick={() => {
                       setSelectedDocType(doc.type);
                       fileInputRef.current?.click();
@@ -421,7 +445,7 @@ export function StudentPortalDashboard({
             <div className="space-y-3">
               {messages.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400">No messages yet.</p> : null}
               {messages.map((message) => (
-                <div key={message.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <div key={message.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                   <p className="font-medium text-ink dark:text-white">{message.subject}</p>
                   <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{message.message}</p>
                   <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatDate(message.created_at, { dateStyle: "medium", timeStyle: "short" })}</p>
@@ -435,7 +459,7 @@ export function StudentPortalDashboard({
             <div className="space-y-3">
               {notes.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400">No shared notes yet.</p> : null}
               {notes.map((note) => (
-                <div key={note.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <div key={note.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                   <p className="font-medium capitalize text-ink dark:text-white">{note.note_type}</p>
                   <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{note.note_text}</p>
                 </div>
@@ -444,17 +468,20 @@ export function StudentPortalDashboard({
           </Card>
         </div>
 
-        {payments.length > 0 ? (
+        {recentPayments.length > 0 ? (
           <Card className="dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)]">
             <CardHeader title="Recorded Payments" description="Transactions already captured in your CRM record." />
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {payments.map((payment) => (
-                <div key={payment.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+              {recentPayments.map((payment) => (
+                <div key={payment.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                   <p className="text-sm font-semibold capitalize text-ink dark:text-white">{payment.payment_type.replace(/_/g, " ")}</p>
                   <p className="mt-2 text-xl font-semibold text-ink dark:text-white">{formatCurrency(payment.amount)}</p>
                   <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    {payment.status} - {formatDate(payment.created_at)}
+                    {payment.status} - {formatDate(payment.paid_at ?? payment.created_at)}
                   </p>
+                  {payment.reference_number ? (
+                    <p className="mt-2 break-words text-xs text-slate-500 dark:text-slate-400">Ref: {payment.reference_number}</p>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -469,7 +496,7 @@ function PortalMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[1.4rem] border border-[#eadfd4] bg-[linear-gradient(180deg,#fff8f2_0%,#ffffff_100%)] p-4 text-center dark:border-white/10 dark:bg-[linear-gradient(180deg,#1a2740_0%,#152236_100%)]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-400">{label}</p>
-      <p className="mt-3 text-2xl font-semibold text-[#173042] dark:text-white">{value}</p>
+      <p className="mt-3 text-2xl font-semibold text-[#213343] dark:text-white">{value}</p>
     </div>
   );
 }

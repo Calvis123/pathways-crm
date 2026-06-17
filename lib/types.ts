@@ -171,6 +171,7 @@ export interface PaymentRecord {
   reference_number: string | null;
   notes: string | null;
   paid_at: string | null;
+  created_by?: string | null;
   created_at: string;
   student?: Pick<Student, "full_name" | "stage" | "email">;
 }

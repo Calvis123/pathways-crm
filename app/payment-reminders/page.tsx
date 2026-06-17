@@ -6,6 +6,7 @@ import {
   warningOutline
 } from "ionicons/icons";
 import { getStudents } from "@/lib/data";
+import { getConsultationBalance } from "@/lib/finance";
 
 function daysBetween(a: number, b: number) {
   return Math.floor((a - b) / (24 * 60 * 60 * 1000));
@@ -17,10 +18,7 @@ export default async function PaymentRemindersPage() {
 
   const overdueStudents = students
     .map((student) => {
-      const balance = Math.max(
-        0,
-        40000 - (student.consultation_upfront_paid ?? 0) - (student.consultation_balance_paid ?? 0)
-      );
+      const balance = getConsultationBalance(student);
       const daysSinceCreated = daysBetween(today.getTime(), new Date(student.created_at).getTime());
       const daysOverdue = student.payment_due_date
         ? daysBetween(today.getTime(), new Date(student.payment_due_date).getTime())
@@ -68,43 +66,31 @@ export default async function PaymentRemindersPage() {
       key: "critical" as const,
       name: "Critical (7+ days overdue)",
       color: "#EF4444",
-      icon: "🔴",
+      icon: warningOutline,
       students: overdueStudents.filter((student) => student.reminder_category === "critical")
     },
     {
       key: "warning" as const,
       name: "Warning (14-30 days no payment)",
       color: "#F59E0B",
-      icon: "🟠",
+      icon: alertCircleOutline,
       students: overdueStudents.filter((student) => student.reminder_category === "warning")
     },
     {
       key: "upcoming" as const,
       name: "Upcoming (0-14 days)",
       color: "#EAB308",
-      icon: "🟡",
+      icon: timeOutline,
       students: overdueStudents.filter((student) => student.reminder_category === "upcoming")
     },
     {
       key: "current" as const,
       name: "Current (partial payment)",
       color: "#10B981",
-      icon: "🟢",
+      icon: checkmarkCircleOutline,
       students: overdueStudents.filter((student) => student.reminder_category === "current")
     }
-  ]
-    .filter((category) => category.students.length > 0)
-    .map((category) => ({
-      ...category,
-      icon:
-        category.key === "critical"
-          ? warningOutline
-          : category.key === "warning"
-            ? alertCircleOutline
-            : category.key === "upcoming"
-              ? timeOutline
-              : checkmarkCircleOutline
-    }));
+  ].filter((category) => category.students.length > 0);
 
   const totalOutstanding = overdueStudents.reduce((sum, student) => sum + student.balance, 0);
   const criticalCount = overdueStudents.filter((student) => student.reminder_category === "critical").length;

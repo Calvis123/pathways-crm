@@ -3,6 +3,8 @@ import { getStudents } from "@/lib/data";
 
 type StatusFilter = "all" | "pending" | "paid" | "overdue";
 type SortKey = "days_waiting" | "amount" | "name" | "due_date";
+const validStatusFilters = new Set<StatusFilter>(["all", "pending", "paid", "overdue"]);
+const validSortKeys = new Set<SortKey>(["days_waiting", "amount", "name", "due_date"]);
 
 export default async function CommissionsPage({
   searchParams
@@ -14,9 +16,13 @@ export default async function CommissionsPage({
   }>;
 }) {
   const params = await searchParams;
-  const statusFilter = (params.status as StatusFilter | undefined) ?? "all";
+  const statusFilter = validStatusFilters.has(params.status as StatusFilter)
+    ? (params.status as StatusFilter)
+    : "all";
   const institutionFilter = params.institution === "all" ? "" : params.institution ?? "";
-  const sortBy = (params.sort as SortKey | undefined) ?? "days_waiting";
+  const sortBy = validSortKeys.has(params.sort as SortKey)
+    ? (params.sort as SortKey)
+    : "days_waiting";
 
   const students = await getStudents();
   const now = Date.now();

@@ -16,7 +16,7 @@ export function DocumentsTable({ documents }: { documents: DocumentRecord[] }) {
       <CardHeader title="Documents" description="This replaces the legacy upload/review flow with metadata ready for Supabase Storage." />
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-100 text-slate-500">
+          <thead className="border-b border-[#f0dfd0] text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium">Student</th>
               <th className="px-4 py-3 font-medium">Type</th>

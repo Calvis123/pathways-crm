@@ -1,6 +1,7 @@
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { ReportsOverview } from "@/components/tables/reports-overview";
 import { getStudents } from "@/lib/data";
+import { CONSULTATION_FEE, getConsultationPaid } from "@/lib/finance";
 import type { Student } from "@/lib/types";
 
 export default async function AnalyticsPage() {
@@ -10,9 +11,8 @@ export default async function AnalyticsPage() {
   const conversionRate = totalStudents > 0 ? Number(((placedStudents / totalStudents) * 100).toFixed(1)) : 0;
 
   const consultationRevenue = students.reduce((sum, student) => {
-    if (student.payment_status === "full" || student.payment_status === "paid") return sum + 40000;
-    if (student.payment_status === "partial") return sum + 20000;
-    return sum;
+    if (student.payment_status === "full" || student.payment_status === "paid") return sum + CONSULTATION_FEE;
+    return sum + getConsultationPaid(student);
   }, 0);
 
   const ieltsRevenue = students.reduce((sum, student) => {

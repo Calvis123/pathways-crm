@@ -34,8 +34,11 @@ export function SessionTabGuard({
       });
 
       if (cancelled) return;
-      const next = pathname && pathname !== "/" ? `?next=${encodeURIComponent(pathname)}` : "";
-      router.replace(`/login${next}` as Route);
+      const params = new URLSearchParams({ signin: "1" });
+      if (pathname && pathname !== "/") {
+        params.set("next", pathname);
+      }
+      router.replace(`/?${params.toString()}` as Route);
     }
 
     logoutAndRedirect();

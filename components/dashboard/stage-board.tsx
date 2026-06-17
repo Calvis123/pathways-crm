@@ -12,7 +12,7 @@ export function StageBoard({ groups }: { groups: Array<{ stage: keyof typeof sta
       />
       <div className="grid gap-4 xl:grid-cols-3">
         {groups.map((group) => (
-          <div key={group.stage} className="rounded-3xl border border-slate-100 bg-slate-50/80 p-4">
+          <div key={group.stage} className="rounded-xl border border-[#f0dfd0] bg-[#fffaf5] p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-semibold text-ink">{stageLabels[group.stage]}</h3>
               <Badge className="bg-white text-slate-600 ring-1 ring-slate-200">{group.students.length}</Badge>

@@ -28,7 +28,7 @@ export function StudentProfileNav({
 
   return (
     <div className="sticky top-2 z-20 -mx-1 overflow-x-auto pb-1">
-      <nav className="inline-flex min-w-full items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/90 p-2 shadow-sm backdrop-blur dark:border-white/10 dark:bg-[#091738]/85">
+      <nav className="inline-flex min-w-full items-center gap-2 rounded-xl border border-[#eadacc] bg-white/92 p-2 shadow-[0_12px_34px_rgba(120,75,42,0.1)] backdrop-blur dark:border-white/10 dark:bg-[#182638]/90">
         {items.map((item) => {
           const selected =
             (active === "timeline" && item.key === "timeline") ||
@@ -41,8 +41,8 @@ export function StudentProfileNav({
               href={item.href(studentId) as Route}
               className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
                 selected
-                  ? "bg-gold text-ink shadow-sm ring-1 ring-gold/30"
-                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-white/[0.05] dark:text-slate-100 dark:ring-white/10 dark:hover:bg-white/[0.09]"
+                  ? "bg-[#213343] text-white shadow-sm ring-1 ring-[#213343]/20"
+                  : "bg-[#fffaf5] text-[#5f7182] ring-1 ring-[#eadacc] hover:bg-[#fff1e6] dark:bg-white/[0.05] dark:text-slate-100 dark:ring-white/10 dark:hover:bg-white/[0.09]"
               }`}
             >
               {item.label}

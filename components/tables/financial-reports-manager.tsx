@@ -84,8 +84,8 @@ export function FinancialReportsManager({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel transition-colors dark:border-white/10 dark:bg-[#0d1729] dark:shadow-[0_22px_70px_rgba(2,6,23,0.32)]">
-        <div className="flex flex-col gap-4 border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)] lg:flex-row lg:items-center lg:justify-between">
+      <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel transition-colors dark:border-white/10 dark:bg-[#182638] dark:shadow-[0_22px_70px_rgba(2,6,23,0.32)]">
+        <div className="flex flex-col gap-4 border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)] lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="font-serif text-3xl">Financial Reports</h1>
             <p className="mt-2 text-sm text-white/70">
@@ -110,7 +110,7 @@ export function FinancialReportsManager({
         </div>
 
         <div className="space-y-6 px-8 py-8">
-          <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
             <label className="min-w-[180px] flex-1 text-sm text-slate-600 dark:text-slate-400">
               <span className="mb-2 block font-medium text-ink dark:text-slate-100">Report Type</span>
               <select
@@ -120,7 +120,7 @@ export function FinancialReportsManager({
                   setFilters(next);
                   applyFilters(next);
                 }}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-[#0f1b31] dark:text-slate-100"
+                className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-[#182638] dark:text-slate-100"
               >
                 <option value="overview">Overview</option>
                 <option value="cashflow">Cash Flow</option>
@@ -134,7 +134,7 @@ export function FinancialReportsManager({
                 type="date"
                 value={filters.startDate}
                 onChange={(event) => setFilters((current) => ({ ...current, startDate: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-[#0f1b31] dark:text-slate-100"
+                className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-[#182638] dark:text-slate-100"
               />
             </label>
             <label className="min-w-[180px] flex-1 text-sm text-slate-600 dark:text-slate-400">
@@ -143,7 +143,7 @@ export function FinancialReportsManager({
                 type="date"
                 value={filters.endDate}
                 onChange={(event) => setFilters((current) => ({ ...current, endDate: event.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-[#0f1b31] dark:text-slate-100"
+                className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-[#182638] dark:text-slate-100"
               />
             </label>
             <button
@@ -234,7 +234,7 @@ export function FinancialReportsManager({
                           </div>
                           <div className="h-3 overflow-hidden rounded-full bg-slate-100">
                             <div
-                              className="h-full rounded-full bg-[#0f172a]"
+                              className="h-full rounded-full bg-[linear-gradient(135deg,#213343,#3f5a68)]"
                               style={{ width: `${item.percentage}%` }}
                             />
                           </div>
@@ -287,7 +287,7 @@ export function FinancialReportsManager({
                 <div className="mt-6 overflow-x-auto">
                   <table className="min-w-full border-collapse">
                     <thead>
-                      <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                      <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                         <th className="px-4 py-3">Student</th>
                         <th className="px-4 py-3">Balance</th>
                         <th className="px-4 py-3">Days Overdue</th>
@@ -297,7 +297,7 @@ export function FinancialReportsManager({
                     </thead>
                     <tbody>
                       {credit.overdueStudents.map((student) => (
-                        <tr key={`${student.name}-${student.due_date}`} className="border-b border-slate-100 hover:bg-gold/5">
+                        <tr key={`${student.name}-${student.due_date}`} className="border-b border-[#f0dfd0] hover:bg-gold/5">
                           <td className="px-4 py-3 text-sm font-medium text-ink">{student.name}</td>
                           <td className="px-4 py-3 text-sm">{formatCurrency(student.balance)}</td>
                           <td className="px-4 py-3 text-sm">
@@ -392,7 +392,7 @@ function MetricCard({
             : "";
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
       <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{label}</p>
       <p className={`mt-3 text-3xl font-extrabold ${accent}`}>{value}</p>
       {sub ? <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{sub}</p> : null}
@@ -409,8 +409,8 @@ function ReportSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#0f1b31]/88">
-      <div className="border-b border-slate-100 px-6 py-5 dark:border-white/10">
+    <section className="overflow-hidden rounded-xl border border-[#eadacc] bg-white dark:border-white/10 dark:bg-[#182638]/88">
+      <div className="border-b border-[#f0dfd0] px-6 py-5 dark:border-white/10">
         <h2 className="font-serif text-2xl text-ink dark:text-slate-50">{title}</h2>
       </div>
       <div className="px-6 py-6">{children}</div>
@@ -435,7 +435,7 @@ function BreakdownTable({
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse">
           <thead>
-            <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+            <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
               <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Amount</th>
               <th className="px-4 py-3">%</th>
@@ -450,7 +450,7 @@ function BreakdownTable({
               </tr>
             ) : null}
             {rows.map((row) => (
-              <tr key={row.label} className="border-b border-slate-100 hover:bg-gold/5">
+              <tr key={row.label} className="border-b border-[#f0dfd0] hover:bg-gold/5">
                 <td className="px-4 py-3 text-sm text-ink">{row.label}</td>
                 <td className="px-4 py-3 text-sm">{formatCurrency(row.amount)}</td>
                 <td className="px-4 py-3 text-sm">{row.percentage.toFixed(1)}%</td>

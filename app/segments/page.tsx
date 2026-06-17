@@ -1,5 +1,6 @@
 import { SegmentsTable } from "@/components/tables/segments-table";
 import { getSegmentSummaries, getStudents } from "@/lib/data";
+import { CONSULTATION_FEE, getConsultationPaid } from "@/lib/finance";
 import type { SegmentKey } from "@/lib/types";
 
 type SegmentFilter = SegmentKey | "all";
@@ -36,8 +37,8 @@ export default async function SegmentsPage({
       effective_segment_score: student.segment_score ?? 0,
       total_paid:
         student.payment_status === "full"
-          ? 40000
-          : (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0)
+          ? CONSULTATION_FEE
+          : getConsultationPaid(student)
     }))
     .filter((student) => filterSegment === "all" || student.effective_segment === filterSegment)
     .sort((a, b) => {

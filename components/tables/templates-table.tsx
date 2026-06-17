@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { readJsonBody } from "@/lib/http";
 import type { EmailTemplate } from "@/lib/types";
 import {
   builtInEmailTemplates,
   emailTemplateCategories,
   emailTemplatePlaceholders
 } from "@/lib/email-templates";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type LibraryTemplate = {
   id: string;
@@ -19,6 +21,8 @@ type LibraryTemplate = {
   isCustom: boolean;
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
   const router = useRouter();
   const [category, setCategory] = useState("all");
@@ -27,6 +31,7 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
   const [isSaving, setIsSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+  const [page, setPage] = useState(0);
 
   const allTemplates = useMemo<LibraryTemplate[]>(
     () => [
@@ -58,6 +63,9 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
       return `${template.name} ${template.subject} ${template.body}`.toLowerCase().includes(query);
     });
   }, [allTemplates, category, search]);
+  const pageCount = Math.max(1, Math.ceil(visibleTemplates.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const paginatedTemplates = visibleTemplates.slice(safePage * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
 
   async function copyTemplate(template: LibraryTemplate) {
     const fullText = `Subject: ${template.subject}\n\n${template.body}`;
@@ -83,10 +91,10 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
       })
     });
 
-    const body = (await response.json()) as { error?: string };
+    const body = await readJsonBody<{ error?: string }>(response);
 
     if (!response.ok) {
-      showToast(body.error ?? "Could not save template.", "error");
+      showToast(body?.error ?? "Could not save template.", "error");
       setIsSaving(false);
       return;
     }
@@ -103,8 +111,8 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
   }
 
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729] dark:shadow-[0_22px_70px_rgba(2,6,23,0.32)]">
-      <div className="flex flex-col gap-4 border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)] lg:flex-row lg:items-center lg:justify-between">
+    <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638] dark:shadow-[0_22px_70px_rgba(2,6,23,0.32)]">
+      <div className="flex flex-col gap-4 border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)] lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="font-serif text-3xl">Email Templates Library</h1>
           <p className="mt-2 text-sm text-white/70">Professional email templates for every situation.</p>
@@ -127,7 +135,7 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
       </div>
 
       <div className="space-y-6 px-8 py-8">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
+        <section className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.04]">
           <h2 className="font-serif text-2xl text-ink dark:text-slate-50">Personalization Guide</h2>
           <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
             Use these placeholders in your emails. They can be replaced before sending.
@@ -153,7 +161,7 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
             className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
               category === "all"
                 ? "bg-gold text-ink"
-                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
+                : "border border-[#eadacc] bg-white text-slate-700 hover:bg-[#fff6ef] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
             }`}
           >
             All ({allTemplates.length})
@@ -166,7 +174,7 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 category === key
                   ? "bg-gold text-ink"
-                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
+                  : "border border-[#eadacc] bg-white text-slate-700 hover:bg-[#fff6ef] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
               }`}
             >
               {label}
@@ -174,22 +182,33 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
           ))}
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
+        <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.04]">
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search templates by name, subject, or content..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
+            className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
           />
         </div>
 
+        {visibleTemplates.length > ITEMS_PER_PAGE ? (
+          <PaginationControls
+            page={safePage}
+            pageCount={pageCount}
+            total={visibleTemplates.length}
+            perPage={ITEMS_PER_PAGE}
+            onPageChange={setPage}
+            label="templates"
+          />
+        ) : null}
+
         <div className="grid gap-5 xl:grid-cols-2">
-          {visibleTemplates.map((template) => {
+          {paginatedTemplates.map((template) => {
             const expanded = expandedId === template.id;
             return (
               <article
                 key={template.id}
-                className={`rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.04] ${expanded ? "xl:col-span-2" : ""}`}
+                className={`rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.04] ${expanded ? "xl:col-span-2" : ""}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -215,7 +234,7 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
                   <button
                     type="button"
                     onClick={() => setExpandedId(expanded ? null : template.id)}
-                    className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200"
+                    className="rounded-xl border border-[#eadacc] px-4 py-2 text-sm font-semibold text-slate-700 dark:border-white/10 dark:text-slate-200"
                   >
                     {expanded ? "Hide" : "View"}
                   </button>
@@ -229,12 +248,12 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
                 </div>
 
                 {expanded ? (
-                  <div className="mt-5 border-t border-slate-100 pt-5 dark:border-white/10">
-                    <div className="rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.05]">
+                  <div className="mt-5 border-t border-[#f0dfd0] pt-5 dark:border-white/10">
+                    <div className="rounded-2xl bg-[#fff6ef] p-4 dark:bg-white/[0.05]">
                       <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Subject</p>
                       <p className="mt-2 text-sm text-ink dark:text-slate-100">{template.subject}</p>
                     </div>
-                    <div className="mt-4 whitespace-pre-wrap rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-ink dark:bg-white/[0.05] dark:text-slate-100">
+                    <div className="mt-4 whitespace-pre-wrap rounded-2xl bg-[#fff6ef] p-4 text-sm leading-7 text-ink dark:bg-white/[0.05] dark:text-slate-100">
                       {template.body}
                     </div>
                     <button
@@ -252,7 +271,7 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
         </div>
 
         {visibleTemplates.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 px-6 py-16 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+          <div className="rounded-xl border border-dashed border-[#d9c6b8] px-6 py-16 text-center text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
             No templates matched your current filters.
           </div>
         ) : null}
@@ -260,12 +279,12 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
 
       {showModal ? (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/50 px-4"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#213343]/50 px-4"
           onClick={(event) => {
             if (event.target === event.currentTarget) setShowModal(false);
           }}
         >
-          <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-panel dark:border-white/10 dark:bg-[#101a2d]">
+          <div className="w-full max-w-2xl rounded-xl border border-[#eadacc] bg-white p-6 shadow-panel dark:border-white/10 dark:bg-[#182638]">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-serif text-2xl text-ink dark:text-slate-50">Save Custom Template</h2>
               <button type="button" onClick={() => setShowModal(false)} className="text-2xl text-slate-400 dark:text-slate-500">
@@ -276,11 +295,11 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
             <form action={saveTemplate} className="space-y-4">
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-slate-100">Template Name</span>
-                <input name="template_name" required className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
+                <input name="template_name" required className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-slate-100">Category</span>
-                <select name="category" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white">
+                <select name="category" className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white">
                   {Object.entries(emailTemplateCategories).map(([key, label]) => (
                     <option key={key} value={key}>
                       {label}
@@ -290,11 +309,11 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-slate-100">Subject Line</span>
-                <input name="subject" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
+                <input name="subject" className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-ink dark:text-slate-100">Email Body</span>
-                <textarea name="body" rows={10} required className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
+                <textarea name="body" rows={10} required className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white" />
               </label>
               <button type="submit" disabled={isSaving} className="rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white disabled:opacity-70 dark:bg-[#ff7a59]">
                 {isSaving ? "Saving..." : "Save Template"}
@@ -319,7 +338,7 @@ export function TemplatesTable({ templates }: { templates: EmailTemplate[] }) {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 text-center dark:border-white/10 dark:bg-white/[0.04]">
       <p className="text-3xl font-extrabold text-gold">{value}</p>
       <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{label}</p>
     </div>

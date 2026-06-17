@@ -88,6 +88,29 @@ export function LandingPage() {
   const [showStudentPortalModal, setShowStudentPortalModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  function openAuthModal() {
+    setShowAuthModal(true);
+    const params = new URLSearchParams(window.location.search);
+    params.set("signin", "1");
+    window.history.replaceState(null, "", `/?${params.toString()}`);
+  }
+
+  function closeAuthModal() {
+    setShowAuthModal(false);
+    const params = new URLSearchParams(window.location.search);
+    params.delete("signin");
+    params.delete("next");
+    const nextUrl = params.toString() ? `/?${params.toString()}` : "/";
+    window.history.replaceState(null, "", nextUrl);
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("signin") === "1") {
+      setShowAuthModal(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!showAuthModal && !showStudentPortalModal) {
       return undefined;
@@ -95,7 +118,7 @@ export function LandingPage() {
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setShowAuthModal(false);
+        closeAuthModal();
         setShowStudentPortalModal(false);
       }
     }
@@ -134,9 +157,9 @@ export function LandingPage() {
   }, [showMobileMenu]);
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#fff8f4_0%,#fff2eb_52%,#fffaf6_100%)] text-slate-900 transition-colors dark:bg-[linear-gradient(180deg,#08111f_0%,#0c1628_52%,#0f1b31_100%)] dark:text-slate-100">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#fff8f4_0%,#fff2eb_52%,#fffaf6_100%)] text-slate-900 transition-colors dark:bg-[linear-gradient(180deg,#142233_0%,#0c1628_52%,#0f1b31_100%)] dark:text-slate-100">
       <header className="sticky top-0 z-40 px-3 pt-3 transition-colors sm:px-4 lg:px-6">
-        <div className="mx-auto max-w-7xl rounded-[1.65rem] border border-[#eadfd0]/90 bg-[#fffaf4]/88 px-4 py-3 shadow-[0_20px_60px_rgba(33,51,67,0.08)] backdrop-blur-2xl transition-colors dark:border-white/10 dark:bg-[#09111f]/78 dark:shadow-[0_24px_70px_rgba(2,6,23,0.34)]">
+        <div className="mx-auto max-w-7xl rounded-[1.65rem] border border-[#eadfd0]/90 bg-[#fffaf4]/88 px-4 py-3 shadow-[0_20px_60px_rgba(33,51,67,0.08)] backdrop-blur-2xl transition-colors dark:border-white/10 dark:bg-[#213343]/78 dark:shadow-[0_24px_70px_rgba(2,6,23,0.34)]">
           <div className="flex items-center justify-between gap-3 sm:gap-4">
           <Link href="/" className="group flex min-w-0 items-center gap-3">
             <div className="rounded-[1.05rem] border border-transparent bg-transparent p-1 transition group-hover:-translate-y-0.5 dark:border-transparent dark:bg-transparent">
@@ -182,7 +205,7 @@ export function LandingPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setShowAuthModal(true)}
+              onClick={openAuthModal}
               className="hidden h-11 rounded-full border border-[#e1cab9] bg-white/96 px-4 text-[#425166] shadow-[0_12px_24px_rgba(33,51,67,0.06)] hover:border-[#d18b5b] hover:bg-[#fff3ea] hover:text-[#213343] dark:border-white/10 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/16 md:inline-flex sm:px-5"
             >
               Sign in
@@ -197,7 +220,7 @@ export function LandingPage() {
         </div>
 
           {showMobileMenu ? (
-            <div className="mt-4 rounded-[1.5rem] border border-[#ead9cc] bg-white/92 p-3 shadow-[0_20px_50px_rgba(33,51,67,0.08)] dark:border-white/10 dark:bg-[#101a2d]/94 md:hidden">
+            <div className="mt-4 rounded-[1.5rem] border border-[#ead9cc] bg-white/92 p-3 shadow-[0_20px_50px_rgba(33,51,67,0.08)] dark:border-white/10 dark:bg-[#182638]/94 md:hidden">
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
@@ -214,7 +237,7 @@ export function LandingPage() {
                   variant="secondary"
                   onClick={() => {
                     setShowMobileMenu(false);
-                    setShowAuthModal(true);
+                    openAuthModal();
                   }}
                   className="justify-center rounded-2xl border border-[#ead9cc] bg-white text-[#213343] hover:bg-[#fff3ea] dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/16"
                 >
@@ -255,7 +278,7 @@ export function LandingPage() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button
                   type="button"
-                  onClick={() => setShowAuthModal(true)}
+                  onClick={openAuthModal}
                   className="rounded-full bg-[#ff7a59] px-6 py-3 text-base text-white hover:bg-[#ef6b49]"
                 >
                   Open the CRM
@@ -370,7 +393,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="services" className="border-y border-[#f2d8cb] bg-[linear-gradient(180deg,#fff8f2_0%,#fff1e7_48%,#fff7f1_100%)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#0b1424_0%,#111c31_100%)]">
+        <section id="services" className="border-y border-[#f2d8cb] bg-[linear-gradient(180deg,#fff8f2_0%,#fff1e7_48%,#fff7f1_100%)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#172434_0%,#111c31_100%)]">
           <div className="mx-auto max-w-7xl px-4 py-16 lg:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl">
@@ -389,7 +412,7 @@ export function LandingPage() {
               {serviceCards.map((card, index) => {
                 const Icon = card.icon;
                 return (
-                  <article key={card.title} className="group relative overflow-hidden rounded-[2rem] border border-[#f0d6c8] bg-[linear-gradient(180deg,#fff3eb_0%,#ffe7db_100%)] p-6 shadow-[0_18px_48px_rgba(33,51,67,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(33,51,67,0.1)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#202b41_0%,#182236_100%)] dark:shadow-[0_20px_52px_rgba(2,6,23,0.22)] dark:hover:bg-[linear-gradient(180deg,#263248_0%,#1c2740_100%)]">
+                  <article key={card.title} className="group relative overflow-hidden rounded-xl border border-[#f0d6c8] bg-[linear-gradient(180deg,#fff3eb_0%,#ffe7db_100%)] p-6 shadow-[0_18px_48px_rgba(33,51,67,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_70px_rgba(33,51,67,0.1)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#202b41_0%,#182236_100%)] dark:shadow-[0_20px_52px_rgba(2,6,23,0.22)] dark:hover:bg-[linear-gradient(180deg,#263248_0%,#1c2740_100%)]">
                     <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(255,190,171,0.24),transparent_72%)] opacity-80 transition group-hover:opacity-100 dark:bg-[radial-gradient(circle_at_top,rgba(255,190,171,0.12),transparent_72%)]" />
                     <div className="relative flex h-14 w-14 items-center justify-center rounded-[1.5rem] bg-[#ffd7c7] text-[#e38b70] dark:bg-[#ff7a59]/15 dark:text-[#ffbeab]">
                       <Icon className="h-5 w-5" />
@@ -425,7 +448,7 @@ export function LandingPage() {
               {crmCards.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <div key={card.title} className="rounded-3xl border border-[#eadfd0] bg-white p-5 shadow-[0_18px_48px_rgba(33,51,67,0.05)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#202b41_0%,#182236_100%)] dark:shadow-[0_20px_52px_rgba(2,6,23,0.22)]">
+                  <div key={card.title} className="rounded-xl border border-[#eadfd0] bg-white p-5 shadow-[0_18px_48px_rgba(33,51,67,0.05)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#202b41_0%,#182236_100%)] dark:shadow-[0_20px_52px_rgba(2,6,23,0.22)]">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#213343] text-white dark:bg-[#3f3140]">
                       <Icon className="h-5 w-5" />
                     </div>
@@ -452,7 +475,7 @@ export function LandingPage() {
 
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {workflowSteps.map((step, index) => (
-                <div key={step.number} className="group relative overflow-hidden rounded-[2rem] border border-[#f0d6c8] bg-[linear-gradient(180deg,#fff4ed_0%,#ffe7db_100%)] p-6 shadow-[0_18px_48px_rgba(33,51,67,0.05)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#202b41_0%,#182236_100%)] dark:shadow-[0_20px_52px_rgba(2,6,23,0.22)]">
+                <div key={step.number} className="group relative overflow-hidden rounded-xl border border-[#f0d6c8] bg-[linear-gradient(180deg,#fff4ed_0%,#ffe7db_100%)] p-6 shadow-[0_18px_48px_rgba(33,51,67,0.05)] dark:border-white/10 dark:bg-[linear-gradient(180deg,#202b41_0%,#182236_100%)] dark:shadow-[0_20px_52px_rgba(2,6,23,0.22)]">
                   <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#ff7a59,#e09a54)]" />
                   {index < workflowSteps.length - 1 ? (
                     <div className="absolute right-[-28px] top-1/2 hidden h-px w-14 bg-[linear-gradient(90deg,rgba(255,122,89,0.45),rgba(224,154,84,0.1))] lg:block" />
@@ -472,7 +495,7 @@ export function LandingPage() {
         </section>
 
         <section id="contact" className="mx-auto max-w-7xl px-4 py-20 lg:px-6">
-          <div className="rounded-[2.5rem] border border-[#f2d8cb] bg-[linear-gradient(135deg,#fff6f0_0%,#ffeade_46%,#fff4ec_100%)] p-8 text-[#213343] shadow-[0_30px_90px_rgba(33,51,67,0.12)] dark:border-white/10 dark:bg-[linear-gradient(135deg,#101a2d_0%,#15243a_52%,#0f2036_100%)] dark:text-white dark:shadow-[0_30px_90px_rgba(2,6,23,0.34)] lg:p-10">
+          <div className="rounded-[2.5rem] border border-[#f2d8cb] bg-[linear-gradient(135deg,#fff6f0_0%,#ffeade_46%,#fff4ec_100%)] p-8 text-[#213343] shadow-[0_30px_90px_rgba(33,51,67,0.12)] dark:border-white/10 dark:bg-[linear-gradient(135deg,#182638_0%,#15243a_52%,#0f2036_100%)] dark:text-white dark:shadow-[0_30px_90px_rgba(2,6,23,0.34)] lg:p-10">
             <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#f0a28b] dark:text-[#ffbeab]">Barak Pathways</p>
@@ -485,7 +508,7 @@ export function LandingPage() {
                 </p>
               </div>
 
-              <div className="space-y-4 rounded-[2rem] border border-white/60 bg-white/35 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="space-y-4 rounded-xl border border-white/60 bg-white/35 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="rounded-2xl bg-white/55 p-4 dark:bg-[linear-gradient(180deg,#202b41_0%,#182236_100%)]">
                   <div className="flex items-center gap-3">
                     <BadgeCheck className="h-5 w-5 text-[#f0a28b] dark:text-[#ffbeab]" />
@@ -508,7 +531,7 @@ export function LandingPage() {
                   <div className="flex flex-wrap gap-3">
                     <Button
                       type="button"
-                      onClick={() => setShowAuthModal(true)}
+                      onClick={openAuthModal}
                       className="rounded-full bg-[#ff7a59] px-6 py-3 text-white hover:bg-[#ef6b49]"
                     >
                       Launch CRM
@@ -530,12 +553,12 @@ export function LandingPage() {
 
       {showAuthModal ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#213343]/55 px-4 py-8 backdrop-blur-md">
-          <div className="absolute inset-0" onClick={() => setShowAuthModal(false)} aria-hidden="true" />
+          <div className="absolute inset-0" onClick={closeAuthModal} aria-hidden="true" />
           <div className="relative z-10 w-full max-w-2xl">
             <div className="mb-4 flex justify-end">
               <button
                 type="button"
-                onClick={() => setShowAuthModal(false)}
+                onClick={closeAuthModal}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20"
                 aria-label="Close sign in dialog"
               >

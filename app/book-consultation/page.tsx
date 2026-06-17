@@ -8,6 +8,21 @@ const countries = ["UK", "Malta", "Cyprus", "Spain", "Canada", "Australia", "Ger
 const programs = ["Undergraduate", "Postgraduate", "Other"];
 const startDates = ["2026", "2027", "Not decided yet"];
 
+async function readJsonResponse(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text) as {
+      error?: string;
+      calendlyUrl?: string;
+      whatsappUrl?: string;
+    };
+  } catch {
+    return { error: text };
+  }
+}
+
 export default function BookConsultationPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
@@ -29,11 +44,7 @@ export default function BookConsultationPage() {
       })
     });
 
-    const body = (await response.json()) as {
-      error?: string;
-      calendlyUrl?: string;
-      whatsappUrl?: string;
-    };
+    const body = await readJsonResponse(response);
 
     if (!response.ok) {
       setError(body.error ?? "We could not save your consultation request.");
@@ -63,7 +74,7 @@ export default function BookConsultationPage() {
           </div>
 
           <div className="grid gap-6 px-8 py-8">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
               <p className="text-xs uppercase tracking-[0.25em] text-gold">What students say</p>
               <blockquote className="mt-4 text-lg leading-8 text-slate-100">
                 &ldquo;Barak Pathways helped me get into University of Derby. Now I&apos;m earning 3.5M KES per year.&rdquo;
@@ -72,15 +83,15 @@ export default function BookConsultationPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                 <p className="text-2xl font-semibold text-gold">1</p>
                 <p className="mt-2 text-sm text-slate-200">Tell us where you want to study.</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                 <p className="text-2xl font-semibold text-gold">2</p>
                 <p className="mt-2 text-sm text-slate-200">We capture your lead and prep your consultation.</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                 <p className="text-2xl font-semibold text-gold">3</p>
                 <p className="mt-2 text-sm text-slate-200">You pick your preferred time on Calendly.</p>
               </div>
@@ -131,32 +142,32 @@ export default function BookConsultationPage() {
                   name="full_name"
                   required
                   placeholder="Full name"
-                  className="rounded-2xl border border-slate-200 px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                 />
                 <input
                   name="email"
                   type="email"
                   required
                   placeholder="Email address"
-                  className="rounded-2xl border border-slate-200 px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                 />
                 <input
                   name="phone"
                   required
                   placeholder="WhatsApp number"
-                  className="rounded-2xl border border-slate-200 px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                 />
                 <input
                   name="location"
                   placeholder="City / location"
-                  className="rounded-2xl border border-slate-200 px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                 />
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <select
                     name="country_interest"
                     required
-                    className="rounded-2xl border border-slate-200 px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                    className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                   >
                     <option value="">Country interest</option>
                     {countries.map((country) => (
@@ -169,7 +180,7 @@ export default function BookConsultationPage() {
                   <select
                     name="program_level"
                     required
-                    className="rounded-2xl border border-slate-200 px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                    className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                   >
                     <option value="">Program level</option>
                     {programs.map((program) => (
@@ -183,7 +194,7 @@ export default function BookConsultationPage() {
                 <select
                   name="start_date"
                   required
-                  className="rounded-2xl border border-slate-200 px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                 >
                   <option value="">When do you want to start?</option>
                   {startDates.map((value) => (

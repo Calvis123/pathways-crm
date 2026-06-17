@@ -43,23 +43,23 @@ export default async function HrActivityPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader title="Most Active Actors" description="Recent audit activity by actor." />
             <div className="space-y-3">
               {actorCounts.map((item) => (
-                <div key={item.actor} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
+                <div key={item.actor} className="flex items-center justify-between rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] px-4 py-3 dark:border-white/10 dark:bg-white/[0.05]">
                   <span className="font-medium text-ink dark:text-white">{item.actor}</span>
-                  <span className="rounded-full bg-[#173042] px-3 py-1 text-xs font-semibold text-white">{item.count}</span>
+                  <span className="rounded-full bg-[#213343] px-3 py-1 text-xs font-semibold text-white">{item.count}</span>
                 </div>
               ))}
             </div>
           </Card>
 
-          <Card className="dark:border-white/10 dark:bg-[#0d1729]">
+          <Card className="dark:border-white/10 dark:bg-[#182638]">
             <CardHeader title="Recent Audit Trail" description="Latest system actions recorded by the CRM." />
             <div className="space-y-3">
               {auditLogs.slice(0, 18).map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+                <div key={item.id} className="rounded-2xl border border-[#f0dfd0] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.05]">
                   <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                     <div>
                       <p className="font-medium text-ink dark:text-white">{item.action}</p>
@@ -84,7 +84,7 @@ export default async function HrActivityPage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-[#0d1729]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-[#182638]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{label}</p>
       <p className="mt-4 text-3xl font-semibold text-ink dark:text-white">{value}</p>
     </div>

@@ -94,7 +94,7 @@ export function ProgressReportControls({
       ) : null}
 
       {renderFilters ? (
-        <div className="flex flex-wrap items-end gap-4 border-b border-slate-200 bg-slate-50 px-8 py-6 dark:border-white/10 dark:bg-white/[0.04]">
+        <div className="flex flex-wrap items-end gap-4 border-b border-[#eadacc] bg-[#fff6ef] px-8 py-6 dark:border-white/10 dark:bg-white/[0.04]">
           <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
             <span className="font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Stage</span>
             <select
@@ -111,7 +111,7 @@ export function ProgressReportControls({
                   })
                 );
               }}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+              className="rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
             >
               {stages.map((stage) => (
                 <option key={stage.key} value={stage.key}>
@@ -138,7 +138,7 @@ export function ProgressReportControls({
                   })
                 );
               }}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+              className="rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
             />
           </label>
 
@@ -159,7 +159,7 @@ export function ProgressReportControls({
                   })
                 );
               }}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+              className="rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
             />
           </label>
 
@@ -180,7 +180,7 @@ export function ProgressReportControls({
                     })
                   )
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
+                className="rounded-xl border border-[#eadacc] bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
               >
                 All Time
               </button>
@@ -199,7 +199,7 @@ export function ProgressReportControls({
                     })
                   )
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
+                className="rounded-xl border border-[#eadacc] bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
               >
                 30 Days
               </button>
@@ -218,7 +218,7 @@ export function ProgressReportControls({
                     })
                   )
                 }
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
+                className="rounded-xl border border-[#eadacc] bg-white px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200"
               >
                 90 Days
               </button>
@@ -242,7 +242,7 @@ export function ProgressReportControls({
                     })
                   );
                 }}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                className="rounded-xl border border-[#eadacc] bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
               >
                 <option value="all">All Students</option>
                 <option value="urgent">Urgent Follow-up</option>

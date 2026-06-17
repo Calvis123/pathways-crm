@@ -7,6 +7,21 @@ const destinations = ["UK", "Canada", "Australia", "USA", "Germany", "Other"];
 const targetScores = ["6.0", "6.5", "7.0", "7.5", "8.0+"];
 const RATE_LIMIT_MS = 30_000;
 
+async function readJsonResponse(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text) as {
+      error?: string;
+      whatsappUrl?: string;
+      consultationUrl?: string;
+    };
+  } catch {
+    return { error: text };
+  }
+}
+
 export default function IeltsTrainingPage() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
@@ -36,11 +51,7 @@ export default function IeltsTrainingPage() {
       })
     });
 
-    const body = (await response.json()) as {
-      error?: string;
-      whatsappUrl?: string;
-      consultationUrl?: string;
-    };
+    const body = await readJsonResponse(response);
 
     if (!response.ok) {
       setError(body.error ?? "We could not save your IELTS registration.");
@@ -57,10 +68,10 @@ export default function IeltsTrainingPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#f7efe7_0%,#fff6ef_48%,#f4efe8_100%)] px-4 py-8 dark:bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_50%,#0f172a_100%)]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#f7efe7_0%,#fff6ef_48%,#f4efe8_100%)] px-4 py-8 dark:bg-[linear-gradient(135deg,#213343_0%,#1e293b_50%,#213343_100%)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(175,146,51,0.08),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(175,146,51,0.12),transparent_35%)]" />
 
-      <div className="relative w-full max-w-[560px] overflow-hidden rounded-[2rem] border border-gold/25 bg-white/95 shadow-[0_25px_80px_rgba(0,0,0,0.15)] backdrop-blur dark:border-white/10 dark:bg-[linear-gradient(180deg,#111c30_0%,#0d1627_100%)] dark:shadow-[0_25px_80px_rgba(0,0,0,0.35)]">
+      <div className="relative w-full max-w-[560px] overflow-hidden rounded-xl border border-gold/25 bg-white/95 shadow-[0_25px_80px_rgba(0,0,0,0.15)] backdrop-blur dark:border-white/10 dark:bg-[linear-gradient(180deg,#111c30_0%,#0d1627_100%)] dark:shadow-[0_25px_80px_rgba(0,0,0,0.35)]">
         <header className="border-b border-gold/15 bg-white px-8 py-6 text-center dark:border-white/10 dark:bg-[linear-gradient(180deg,#162338_0%,#111c30_100%)]">
           <div className="text-xs font-bold uppercase tracking-[0.35em] text-ink dark:text-white">Barak Pathways</div>
           <div className="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-ink px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gold dark:bg-white/10 dark:text-[#ffd6c4]">
@@ -123,7 +134,7 @@ export default function IeltsTrainingPage() {
                     name="full_name"
                     required
                     placeholder="As it appears on your ID"
-                    className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
+                    className="rounded-xl border-2 border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
                   />
                 </div>
 
@@ -134,7 +145,7 @@ export default function IeltsTrainingPage() {
                     type="email"
                     required
                     placeholder="name@example.com"
-                    className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
+                    className="rounded-xl border-2 border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
                   />
                 </div>
 
@@ -145,7 +156,7 @@ export default function IeltsTrainingPage() {
                     required
                     placeholder="07..."
                     inputMode="numeric"
-                    className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
+                    className="rounded-xl border-2 border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
                   />
                 </div>
 
@@ -155,7 +166,7 @@ export default function IeltsTrainingPage() {
                     <input
                       name="location"
                       placeholder="City"
-                      className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
+                      className="rounded-xl border-2 border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400 dark:focus:bg-white/[0.08]"
                     />
                   </div>
 
@@ -164,7 +175,7 @@ export default function IeltsTrainingPage() {
                     <select
                       name="target_score"
                       defaultValue="6.5"
-                      className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.08]"
+                      className="rounded-xl border-2 border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.08]"
                     >
                       {targetScores.map((score) => (
                         <option key={score} value={score}>
@@ -180,7 +191,7 @@ export default function IeltsTrainingPage() {
                   <select
                     name="destination"
                     defaultValue="UK"
-                    className="rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.08]"
+                    className="rounded-xl border-2 border-[#eadacc] bg-[#fff6ef] px-4 py-3 text-sm text-ink outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:focus:bg-white/[0.08]"
                   >
                     {destinations.map((destination) => (
                       <option key={destination} value={destination}>
@@ -199,7 +210,7 @@ export default function IeltsTrainingPage() {
                 </button>
               </form>
 
-              <div className="mt-8 border-t border-slate-200 pt-6 text-center dark:border-white/10">
+              <div className="mt-8 border-t border-[#eadacc] pt-6 text-center dark:border-white/10">
                 <div className="mb-3 text-sm font-semibold text-slate-500 dark:text-slate-300">British Council Approved Materials</div>
                 <div className="mb-3 text-sm font-semibold text-slate-500 dark:text-slate-300">Certified Trainers</div>
                 <div className="text-sm font-semibold text-slate-500 dark:text-slate-300">Flexible Schedule</div>

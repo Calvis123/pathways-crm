@@ -1,5 +1,6 @@
 import { formatCurrency } from "@/lib/utils";
 import { getStudents } from "@/lib/data";
+import { CONSULTATION_FEE, getConsultationBalance, getConsultationPaid } from "@/lib/finance";
 
 const conversionRates = {
   lead_to_consultation: 0.4,
@@ -10,7 +11,7 @@ const conversionRates = {
 } as const;
 
 const stageFlow = ["lead", "consultation", "documents", "application", "visa", "enrolled"] as const;
-const averageConsultationFee = 40000;
+const averageConsultationFee = CONSULTATION_FEE;
 
 type StageKey = (typeof stageFlow)[number];
 
@@ -75,12 +76,11 @@ export default async function RevenueForecastPage() {
     const count = stageStudents.length;
     const collected = stageStudents.reduce((sum, student) => {
       if (student.payment_status === "full" || student.payment_status === "paid") return sum + averageConsultationFee;
-      return sum + (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
+      return sum + getConsultationPaid(student);
     }, 0);
     const outstanding = stageStudents.reduce((sum, student) => {
       if (student.payment_status === "full" || student.payment_status === "paid") return sum;
-      const paid = (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
-      return sum + Math.max(averageConsultationFee - paid, 0);
+      return sum + getConsultationBalance(student);
     }, 0);
 
     return {
@@ -125,7 +125,7 @@ export default async function RevenueForecastPage() {
         const paid =
           student.payment_status === "full" || student.payment_status === "paid"
             ? averageConsultationFee
-            : (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
+            : getConsultationPaid(student);
         return { revenue: acc.revenue + paid, enrollments: acc.enrollments + 1 };
       },
       { revenue: 0, enrollments: 0 }
@@ -142,7 +142,7 @@ export default async function RevenueForecastPage() {
         const paid =
           student.payment_status === "full" || student.payment_status === "paid"
             ? averageConsultationFee
-            : (student.consultation_upfront_paid ?? 0) + (student.consultation_balance_paid ?? 0);
+            : getConsultationPaid(student);
         return { revenue: acc.revenue + paid, enrollments: acc.enrollments + 1 };
       },
       { revenue: 0, enrollments: 0 }
@@ -170,8 +170,8 @@ export default async function RevenueForecastPage() {
   const chartMax = Math.max(...chartRows.map((row) => row.value), 1);
 
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
-      <div className="border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)]">
+    <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638]">
+      <div className="border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)]">
         <h1 className="font-serif text-3xl">Revenue Forecast</h1>
         <p className="mt-2 text-sm text-white/70">
           Predict future revenue based on pipeline stage and historical conversion rates.
@@ -233,7 +233,7 @@ export default async function RevenueForecastPage() {
           <Panel title="Pipeline by Stage">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {pipelineData.map((item) => (
-                <div key={item.stage} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center dark:border-white/10 dark:bg-white/[0.05]">
+                <div key={item.stage} className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-4 text-center dark:border-white/10 dark:bg-white/[0.05]">
                   <p className="text-3xl font-extrabold text-ink dark:text-white">{item.count}</p>
                   <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{item.label}</p>
                   <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatCurrency(item.expected_value)}</p>
@@ -243,10 +243,10 @@ export default async function RevenueForecastPage() {
           </Panel>
 
           <Panel title="Monthly Breakdown">
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+            <div className="overflow-x-auto rounded-2xl border border-[#eadacc] dark:border-white/10">
               <table className="min-w-full border-collapse">
                 <thead>
-                  <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                  <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                     <th className="px-4 py-3">Month</th>
                     <th className="px-4 py-3">Est. Revenue</th>
                     <th className="px-4 py-3">Est. Enrollments</th>
@@ -268,7 +268,7 @@ export default async function RevenueForecastPage() {
         <Panel title="Conversion Rates (Historical)">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {Object.entries(conversionRates).map(([key, rate]) => (
-              <div key={key} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+              <div key={key} className="rounded-2xl border border-[#eadacc] bg-[#fff6ef] p-4 dark:border-white/10 dark:bg-white/[0.05]">
                 <p className="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
                   {key.replaceAll("_to_", " -> ").replaceAll("_", " ")}
                 </p>
@@ -294,7 +294,7 @@ function MetricCard({
   accent?: string;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
       <p className="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{label}</p>
       <p className={`mt-3 text-3xl font-extrabold ${accent}`}>{value}</p>
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{hint}</p>
@@ -310,7 +310,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+    <section className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
       <h2 className="mb-5 font-serif text-2xl text-ink dark:text-white">{title}</h2>
       {children}
     </section>
@@ -331,7 +331,7 @@ function ForecastRow({
   shaded?: boolean;
 }) {
   return (
-    <tr className={`${shaded ? "bg-slate-50 dark:bg-white/[0.03]" : ""} border-b border-slate-100 last:border-b-0 dark:border-white/10`}>
+    <tr className={`${shaded ? "bg-[#fff6ef] dark:bg-white/[0.03]" : ""} border-b border-[#f0dfd0] last:border-b-0 dark:border-white/10`}>
       <td className="px-4 py-3 text-sm font-medium text-ink dark:text-white">{label}</td>
       <td className="px-4 py-3 text-sm dark:text-slate-200">{formatCurrency(revenue)}</td>
       <td className="px-4 py-3 text-sm dark:text-slate-200">{enrollments}</td>

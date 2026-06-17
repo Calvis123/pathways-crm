@@ -4,10 +4,10 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const styles = {
-  primary: "bg-ink text-white hover:bg-ocean dark:bg-[#ff7a59] dark:text-white dark:hover:bg-[#ef6b49]",
+  primary: "bg-[#213343] text-white shadow-sm hover:bg-[#2f495c] dark:bg-[#ff7a59] dark:text-white dark:hover:bg-[#ef6b49]",
   secondary:
-    "bg-white text-ink ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-white/10 dark:text-slate-100 dark:ring-white/10 dark:hover:bg-white/16",
-  ghost: "bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
+    "bg-white text-[#213343] ring-1 ring-[#eadacc] shadow-sm hover:bg-[#fff6ef] dark:bg-white/[0.06] dark:text-slate-100 dark:ring-white/10 dark:hover:bg-white/[0.1]",
+  ghost: "bg-transparent text-[#5f7182] hover:bg-[#fff6ef] dark:text-slate-300 dark:hover:bg-white/[0.08]"
 };
 
 export function Button({
@@ -19,7 +19,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition duration-200",
+        "inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition duration-200 focus:outline-none focus:ring-4 focus:ring-[#ff7a59]/15 disabled:pointer-events-none disabled:opacity-55 dark:focus:ring-white/10",
         styles[variant],
         className
       )}
@@ -45,7 +45,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition duration-200",
+        "inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold transition duration-200 focus:outline-none focus:ring-4 focus:ring-[#ff7a59]/15 dark:focus:ring-white/10",
         styles[variant],
         className
       )}

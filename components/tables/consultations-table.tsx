@@ -16,7 +16,7 @@ export function ConsultationsTable({ consultations }: { consultations: Consultat
       <CardHeader title="Consultations" description="The public booking page in the old system fed this operational queue." />
       <div className="grid gap-4 lg:grid-cols-2">
         {consultations.map((consultation) => (
-          <div key={consultation.id} className="rounded-3xl border border-slate-100 bg-slate-50/70 p-5">
+          <div key={consultation.id} className="rounded-xl border border-[#eadacc] bg-[#fffaf5] p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-semibold text-ink">{consultation.student?.full_name ?? consultation.student_id}</p>

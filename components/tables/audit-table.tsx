@@ -72,8 +72,8 @@ export function AuditTable({
   const exportHref = `/api/audit/export?${toQueryString(filters)}`;
 
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white shadow-panel dark:border-white/10 dark:bg-[#0d1729]">
-      <div className="flex flex-col gap-4 border-b border-gold/20 bg-[#0f172a] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#09111f,#15223a)] lg:flex-row lg:items-center lg:justify-between">
+    <section className="rounded-xl border border-[#eadacc] bg-white shadow-panel dark:border-white/10 dark:bg-[#182638]">
+      <div className="flex flex-col gap-4 border-b border-gold/20 bg-[linear-gradient(135deg,#213343,#3f5a68)] px-8 py-6 text-white dark:border-white/10 dark:bg-[linear-gradient(135deg,#213343,#3f5a68)] lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="font-serif text-3xl">Audit Log</h1>
           <p className="mt-2 text-sm text-white/70">
@@ -104,7 +104,7 @@ export function AuditTable({
           <MetricCard label="Top Action" value={stats.topAction} />
         </div>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+        <section className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
           <h2 className="mb-5 font-serif text-2xl text-ink dark:text-white">Filter Logs</h2>
           <form method="GET" action="/audit" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -114,7 +114,7 @@ export function AuditTable({
                   type="date"
                   name="date_from"
                   defaultValue={filters.dateFrom}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                  className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
                 />
               </label>
               <label className="text-sm text-slate-600">
@@ -123,7 +123,7 @@ export function AuditTable({
                   type="date"
                   name="date_to"
                   defaultValue={filters.dateTo}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
+                  className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:[color-scheme:dark]"
                 />
               </label>
               <label className="text-sm text-slate-600">
@@ -131,7 +131,7 @@ export function AuditTable({
                 <select
                   name="filter_user"
                   defaultValue={filters.filterUser}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                  className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                 >
                   <option value="">All Users</option>
                   {users.map((user) => (
@@ -146,7 +146,7 @@ export function AuditTable({
                 <select
                   name="filter_action"
                   defaultValue={filters.filterAction}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                  className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                 >
                   <option value="">All Actions</option>
                   {actionTypes.map((action) => (
@@ -161,7 +161,7 @@ export function AuditTable({
                 <select
                   name="filter_table"
                   defaultValue={filters.filterTable}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
+                  className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                 >
                   <option value="">All Tables</option>
                   {tables.map((table) => (
@@ -178,7 +178,7 @@ export function AuditTable({
                   name="search"
                   defaultValue={filters.search}
                   placeholder="Search records..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
+                  className="w-full rounded-xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-400"
                 />
               </label>
             </div>
@@ -192,7 +192,7 @@ export function AuditTable({
               </button>
               <Link
                 href="/audit"
-                className="inline-flex rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.06]"
+                className="inline-flex rounded-xl border border-[#eadacc] px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-[#fff6ef] dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.06]"
               >
                 Clear
               </Link>
@@ -200,7 +200,7 @@ export function AuditTable({
           </form>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
+        <section className="rounded-xl border border-[#eadacc] bg-white p-6 dark:border-white/10 dark:bg-white/[0.05]">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 className="font-serif text-2xl text-ink dark:text-white">Activity Log</h2>
             <p className="text-sm text-slate-500">
@@ -208,10 +208,10 @@ export function AuditTable({
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10">
+          <div className="overflow-x-auto rounded-2xl border border-[#eadacc] dark:border-white/10">
             <table className="min-w-full border-collapse">
               <thead>
-                <tr className="bg-[#0f172a] text-left text-xs uppercase tracking-[0.08em] text-white">
+                <tr className="bg-[linear-gradient(135deg,#213343,#3f5a68)] text-left text-xs uppercase tracking-[0.08em] text-white">
                   <th className="px-4 py-3">Timestamp</th>
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Action</th>
@@ -229,7 +229,7 @@ export function AuditTable({
                   </tr>
                 ) : (
                   logs.map((log) => (
-                    <tr key={log.id} className="border-b border-slate-100 align-top hover:bg-gold/5">
+                    <tr key={log.id} className="border-b border-[#f0dfd0] align-top hover:bg-gold/5">
                       <td className="px-4 py-4 text-sm text-slate-500">
                         {new Date(log.created_at).toLocaleString("en-KE", {
                           month: "short",
@@ -274,7 +274,7 @@ export function AuditTable({
               {page > 1 ? (
                 <Link
                   href={`/audit?${toQueryString(filters, { page: page - 1 })}`}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 dark:border-white/10 dark:text-slate-200"
+                  className="rounded-xl border border-[#eadacc] px-4 py-2 text-sm text-slate-700 dark:border-white/10 dark:text-slate-200"
                 >
                   Previous
                 </Link>
@@ -292,7 +292,7 @@ export function AuditTable({
                     ) : (
                       <Link
                         href={`/audit?${toQueryString(filters, { page: pageNumber })}`}
-                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 dark:border-white/10 dark:text-slate-200"
+                        className="rounded-xl border border-[#eadacc] px-4 py-2 text-sm text-slate-700 dark:border-white/10 dark:text-slate-200"
                       >
                         {pageNumber}
                       </Link>
@@ -303,7 +303,7 @@ export function AuditTable({
               {page < totalPages ? (
                 <Link
                   href={`/audit?${toQueryString(filters, { page: page + 1 })}`}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 dark:border-white/10 dark:text-slate-200"
+                  className="rounded-xl border border-[#eadacc] px-4 py-2 text-sm text-slate-700 dark:border-white/10 dark:text-slate-200"
                 >
                   Next
                 </Link>
@@ -318,7 +318,7 @@ export function AuditTable({
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="rounded-xl border border-[#eadacc] bg-white p-5 dark:border-white/10 dark:bg-white/[0.05]">
       <p className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</p>
       <p className="mt-3 text-3xl font-extrabold text-ink dark:text-white">{value}</p>
     </div>

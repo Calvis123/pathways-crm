@@ -12,7 +12,7 @@ export async function AppShell({ children }: PropsWithChildren) {
 
   if (isPublic && !session) {
     return (
-      <div className="min-h-screen bg-[linear-gradient(180deg,#fff8f3_0%,#fff1e8_36%,#fffaf6_100%)] transition-colors dark:bg-[linear-gradient(180deg,#050b15_0%,#09111f_18%,#0d1728_18%,#101a2d_100%)]">
+      <div className="min-h-screen bg-[linear-gradient(180deg,#fff8f3_0%,#fff1e8_36%,#fffaf6_100%)] transition-colors dark:bg-[linear-gradient(180deg,#111d2b_0%,#213343_18%,#1b2a3d_18%,#182638_100%)]">
         {children}
       </div>
     );

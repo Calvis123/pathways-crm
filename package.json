@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:reset": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\" && next dev",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "dev:reset": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\" && next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
