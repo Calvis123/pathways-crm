@@ -81,9 +81,11 @@ export async function POST(request: Request) {
       request,
       {
         ok: true,
+        success: true,
+        message: "Application sent successfully.",
         studentId: student.id
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error) {
     return jsonWithPublicCors(

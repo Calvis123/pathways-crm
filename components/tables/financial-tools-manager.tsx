@@ -21,6 +21,7 @@ import { PaginationControls } from "@/components/ui/pagination-controls";
 import { CONSULTATION_FEE } from "@/lib/finance";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { AppRole, ExpenseCategory, ExpensePaymentMethod, ExpenseRecord } from "@/lib/types";
+import { canAccessFinance } from "@/lib/auth-shared";
 
 type TabKey = "cashflow" | "credit" | "expenses" | "invoices" | "receipts" | "reminders";
 type DocumentKind = "invoice" | "receipt";
@@ -122,7 +123,7 @@ export function FinancialToolsManager({
   }>;
 }) {
   const router = useRouter();
-  const canViewFullFinancialTools = currentRole === "admin" || currentRole === "employee";
+  const canViewFullFinancialTools = canAccessFinance(currentRole);
   const [activeTab, setActiveTab] = useState<TabKey>(canViewFullFinancialTools ? "cashflow" : "invoices");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

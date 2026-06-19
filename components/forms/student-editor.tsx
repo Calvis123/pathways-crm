@@ -15,11 +15,13 @@ const stages: StudentStage[] = [...stageOrder];
 export function StudentEditor({
   initial,
   readOnly = false,
-  compact = false
+  compact = false,
+  canSeeFinance = false
 }: {
   initial?: Student | null;
   readOnly?: boolean;
   compact?: boolean;
+  canSeeFinance?: boolean;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState("");
@@ -86,20 +88,24 @@ export function StudentEditor({
       program_level: form.program_level || null,
       university_name: form.university_name || null,
       stage: form.stage as StudentStage,
-      payment_status: form.payment_status,
-      consultation_upfront_paid: Number(form.consultation_upfront_paid || 0),
-      consultation_balance_paid: Number(form.consultation_balance_paid || 0),
       ielts_enrolled: form.ielts_enrolled,
-      ielts_amount: Number(form.ielts_amount || 0),
-      ielts_payment_status: form.ielts_payment_status as "paid" | "unpaid",
       notes: form.notes || null,
       lead_source: form.lead_source || null
     };
+    const financePayload = canSeeFinance
+      ? {
+          payment_status: form.payment_status,
+          consultation_upfront_paid: Number(form.consultation_upfront_paid || 0),
+          consultation_balance_paid: Number(form.consultation_balance_paid || 0),
+          ielts_amount: Number(form.ielts_amount || 0),
+          ielts_payment_status: form.ielts_payment_status as "paid" | "unpaid"
+        }
+      : {};
 
     const response = await fetch(initial ? `/api/students/${initial.id}` : "/api/students", {
       method: initial ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ ...payload, ...financePayload })
     });
     const body = await readJsonBody<{ error?: string; id?: string }>(response);
     if (!response.ok) {
@@ -162,10 +168,12 @@ export function StudentEditor({
                   <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Stage</p>
                   <p className="mt-1 font-semibold text-[#213343]">{stageLabels[form.stage as StudentStage]}</p>
                 </div>
+                {canSeeFinance ? (
                 <div className="rounded-lg bg-[#fff6ef] p-3">
                   <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Paid</p>
                   <p className="mt-1 font-semibold text-[#213343]">{formatCurrency(paidTotal)}</p>
                 </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -214,6 +222,7 @@ export function StudentEditor({
           </section>
         </div>
 
+        {canSeeFinance ? (
         <aside className="space-y-6">
           <section className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#182638]">
             <div className="mb-5 flex items-center gap-3 border-b border-[#eadacc] pb-4 dark:border-white/10">
@@ -249,6 +258,7 @@ export function StudentEditor({
             </div>
           </section>
         </aside>
+        ) : null}
       </div>
 
       <section className="rounded-xl border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#182638]">

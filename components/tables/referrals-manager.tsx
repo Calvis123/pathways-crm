@@ -11,7 +11,7 @@ import { formatCurrency } from "@/lib/utils";
 const statuses: ReferralStatus[] = ["new", "contacted", "converted", "rewarded"];
 const ITEMS_PER_PAGE = 10;
 
-export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] }) {
+export function ReferralsManager({ referrals, canSeeFinance }: { referrals: ReferralRecord[]; canSeeFinance: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          reward_amount: Number(form.reward_amount)
+          reward_amount: canSeeFinance ? Number(form.reward_amount) : undefined
         })
       });
 
@@ -97,7 +97,7 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
             ["referral_code", "Referral code"],
             ["referred_student_name", "Referred student"],
             ["referred_student_email", "Student email"],
-            ["reward_amount", "Reward amount"],
+            ...(canSeeFinance ? [["reward_amount", "Reward amount"]] : []),
             ["notes", "Notes"]
           ].map(([key, label]) => (
             <label key={key} className="text-sm text-slate-600 dark:text-slate-300">
@@ -144,7 +144,7 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
                 <th className="pb-3 font-medium">Referrer</th>
                 <th className="pb-3 font-medium">Referred Student</th>
                 <th className="pb-3 font-medium">Code</th>
-                <th className="pb-3 font-medium">Reward</th>
+                {canSeeFinance ? <th className="pb-3 font-medium">Reward</th> : null}
                 <th className="pb-3 font-medium">Status</th>
               </tr>
             </thead>
@@ -160,7 +160,7 @@ export function ReferralsManager({ referrals }: { referrals: ReferralRecord[] })
                     <p className="text-slate-500 dark:text-slate-400">{referral.referred_student_email ?? "-"}</p>
                   </td>
                   <td className="py-3 font-medium text-ink dark:text-slate-100">{referral.referral_code}</td>
-                  <td className="py-3 dark:text-slate-200">{formatCurrency(referral.reward_amount)}</td>
+                  {canSeeFinance ? <td className="py-3 dark:text-slate-200">{formatCurrency(referral.reward_amount)}</td> : null}
                   <td className="py-3">
                     <select
                       className="rounded-lg border border-[#eadacc] bg-white px-3 py-2 capitalize dark:border-white/10 dark:bg-white/[0.06] dark:text-white"

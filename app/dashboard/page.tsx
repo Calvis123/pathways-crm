@@ -1,5 +1,5 @@
 import { DashboardWorkspace } from "@/components/dashboard/workspace";
-import { getCurrentSession } from "@/lib/auth";
+import { canAccessFinance, getCurrentSession } from "@/lib/auth";
 import { getAuditLogs, getDashboardStats, getStudents } from "@/lib/data";
 
 export default async function DashboardPage() {
@@ -10,5 +10,9 @@ export default async function DashboardPage() {
     getAuditLogs(20)
   ]);
 
-  return <DashboardWorkspace students={students} stats={stats} auditLogs={auditLogs} user={session} />;
+  const safeStats = canAccessFinance(session?.role)
+    ? stats
+    : { ...stats, totalRevenue: 0, pendingRevenue: 0, overdueCommissions: 0 };
+
+  return <DashboardWorkspace students={students} stats={safeStats} auditLogs={auditLogs} user={session} />;
 }

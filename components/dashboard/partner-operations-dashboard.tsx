@@ -8,9 +8,11 @@ import type { OperatingSystemSnapshot, Student } from "@/lib/types";
 
 export function PartnerOperationsDashboard({
   snapshot,
+  canSeeFinance,
   students
 }: {
   snapshot: OperatingSystemSnapshot;
+  canSeeFinance: boolean;
   students: Pick<Student, "id" | "full_name" | "country_interest" | "stage">[];
 }) {
   const router = useRouter();
@@ -140,6 +142,7 @@ export function PartnerOperationsDashboard({
         </Card>
       </div>
 
+      {canSeeFinance ? (
       <div className="grid gap-5 xl:grid-cols-3">
         <Card>
           <CardHeader title="Create Agreement" />
@@ -205,6 +208,7 @@ export function PartnerOperationsDashboard({
           </form>
         </Card>
       </div>
+      ) : null}
 
       <Card>
         <CardHeader title="Referral Pipeline" />

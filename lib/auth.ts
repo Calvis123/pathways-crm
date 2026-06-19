@@ -17,7 +17,12 @@ import {
   getDefaultRouteForRole,
   hasRouteAccess,
   filterStudentsByRole,
+  allAppRoles,
+  canAccessFinance,
+  financeRoles,
+  isPrivilegedRole,
   permissionMatrix,
+  privilegedRoles,
   roleLabel
 } from "@/lib/auth-shared";
 
@@ -125,6 +130,11 @@ export {
   getDefaultRouteForRole,
   hasRouteAccess,
   filterStudentsByRole,
+  allAppRoles,
+  canAccessFinance,
+  financeRoles,
+  isPrivilegedRole,
   permissionMatrix,
+  privilegedRoles,
   roleLabel
 };

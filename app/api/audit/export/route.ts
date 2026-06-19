@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentSession } from "@/lib/auth";
+import { getCurrentSession, isPrivilegedRole } from "@/lib/auth";
 import { getAuditLogs, getUsers } from "@/lib/data";
 
 function normalizeDate(value: string | null) {
@@ -10,7 +10,7 @@ function normalizeDate(value: string | null) {
 
 export async function GET(request: Request) {
   const session = await getCurrentSession();
-  if (!session || session.role !== "admin") {
+  if (!session || !isPrivilegedRole(session.role)) {
     return NextResponse.json({ error: "Access denied." }, { status: 403 });
   }
 

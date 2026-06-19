@@ -25,12 +25,14 @@ export function StudentTimelineView({
   student,
   documents,
   notes,
-  activities
+  activities,
+  canSeeFinance
 }: {
   student: Student;
   documents: DocumentRecord[];
   notes: StudentNote[];
   activities: StudentActivityEvent[];
+  canSeeFinance: boolean;
 }) {
   const progress = progressByStage[student.stage] ?? 0;
   const milestones = [
@@ -54,12 +56,14 @@ export function StudentTimelineView({
             <p className="text-sm text-slate-500">Progress</p>
             <p className="mt-2 text-3xl font-semibold text-ink">{progress}%</p>
           </div>
+          {canSeeFinance ? (
           <div className="rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
             <p className="text-sm text-slate-500">Total Paid</p>
             <p className="mt-2 text-3xl font-semibold text-ink">
               {formatCurrency(student.consultation_upfront_paid + student.consultation_balance_paid)}
             </p>
           </div>
+          ) : null}
           <div className="rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">
             <p className="text-sm text-slate-500">Documents</p>
             <p className="mt-2 text-3xl font-semibold text-ink">{documents.length}</p>
@@ -138,7 +142,9 @@ export function StudentTimelineView({
               No activity has been logged for this student yet.
             </div>
           ) : (
-            activities.map((activity) => (
+            activities
+              .filter((activity) => canSeeFinance || activity.channel !== "payment")
+              .map((activity) => (
               <div key={activity.id} className="flex gap-4">
                 <div className={`mt-1 h-4 w-4 rounded-full ${channelTone(activity.channel)}`} />
                 <div className="flex-1 rounded-lg border border-[#eadacc] bg-[#fffaf5] p-4">

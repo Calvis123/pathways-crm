@@ -1,6 +1,6 @@
 import { FinancialToolsManager } from "@/components/tables/financial-tools-manager";
 import { getExpenses, getPayments, getStudents } from "@/lib/data";
-import { getCurrentSession } from "@/lib/auth";
+import { canAccessFinance, getCurrentSession } from "@/lib/auth";
 import { getConsultationBalance, getConsultationPaid } from "@/lib/finance";
 import type { ExpenseCategory } from "@/lib/types";
 
@@ -31,7 +31,7 @@ export default async function FinancialToolsPage({
   const startDate = params.start_date ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   const endDate = params.end_date ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10);
   const session = await getCurrentSession();
-  const canViewFullFinancialTools = session?.role === "admin" || session?.role === "employee";
+  const canViewFullFinancialTools = canAccessFinance(session?.role);
 
   if (!canViewFullFinancialTools) {
     return (

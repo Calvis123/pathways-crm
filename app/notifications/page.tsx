@@ -4,6 +4,7 @@ import { Bell, CalendarClock, FileWarning, MessageCircleWarning, Wallet } from "
 import type { ReactNode } from "react";
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { Card, CardHeader } from "@/components/ui/card";
+import { canAccessFinance, getCurrentSession } from "@/lib/auth";
 import {
   getAuditLogs,
   getOpenTasks,
@@ -21,15 +22,17 @@ function startOfToday() {
 }
 
 export default async function NotificationsPage() {
-  const [auditItems, consultations, pendingDocuments, unreadPortalMessages, taskAlerts, students] =
+  const [auditItems, consultations, pendingDocuments, unreadPortalMessages, taskAlerts, students, session] =
     await Promise.all([
       getAuditLogs(12),
       getUpcomingConsultations(6),
       getPendingDocuments(6),
       getUnreadPortalMessages(6),
       getOpenTasks(6),
-      getStudents()
+      getStudents(),
+      getCurrentSession()
     ]);
+  const canSeeFinance = canAccessFinance(session?.role);
 
   const today = startOfToday();
 
@@ -47,7 +50,7 @@ export default async function NotificationsPage() {
     tone: item.status === "pending" ? "warning" : "info"
   }));
 
-  const paymentAlerts = students
+  const paymentAlerts = canSeeFinance ? students
     .map((student) => {
       const balance = getConsultationBalance(student);
       const overdue =
@@ -64,7 +67,7 @@ export default async function NotificationsPage() {
     })
     .filter((item) => item.balance > 0 && item.due_date)
     .sort((a, b) => Number(b.overdue) - Number(a.overdue))
-    .slice(0, 6);
+    .slice(0, 6) : [];
 
   const totalAttentionItems =
     consultationAlerts.length +
@@ -89,7 +92,7 @@ export default async function NotificationsPage() {
               <SummaryStat label="Needs Attention" value={String(totalAttentionItems)} icon={<Bell className="h-4 w-4" />} />
               <SummaryStat label="Consultations" value={String(consultationAlerts.length)} icon={<CalendarClock className="h-4 w-4" />} />
               <SummaryStat label="Unread Messages" value={String(unreadPortalMessages.length)} icon={<MessageCircleWarning className="h-4 w-4" />} />
-              <SummaryStat label="Payment Follow-up" value={String(paymentAlerts.length)} icon={<Wallet className="h-4 w-4" />} />
+              {canSeeFinance ? <SummaryStat label="Payment Follow-up" value={String(paymentAlerts.length)} icon={<Wallet className="h-4 w-4" />} /> : null}
             </div>
           </Card>
 
@@ -110,6 +113,7 @@ export default async function NotificationsPage() {
             ))}
           </NotificationSection>
 
+          {canSeeFinance ? (
           <NotificationSection
             title="Payment Follow-up"
             description="Students with outstanding balances and due dates."
@@ -126,6 +130,7 @@ export default async function NotificationsPage() {
               />
             ))}
           </NotificationSection>
+          ) : null}
 
           <NotificationSection
             title="Portal Messages"

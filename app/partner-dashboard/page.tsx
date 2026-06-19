@@ -1,8 +1,9 @@
 import { PartnerOperationsDashboard } from "@/components/dashboard/partner-operations-dashboard";
+import { canAccessFinance, getCurrentSession } from "@/lib/auth";
 import { getOperatingSystemSnapshot, getStudents } from "@/lib/data";
 
 export default async function PartnerDashboardPage() {
-  const [snapshot, students] = await Promise.all([getOperatingSystemSnapshot(), getStudents()]);
+  const [snapshot, students, session] = await Promise.all([getOperatingSystemSnapshot(), getStudents(), getCurrentSession()]);
 
   return (
     <div className="space-y-5">
@@ -11,6 +12,7 @@ export default async function PartnerDashboardPage() {
       </div>
       <PartnerOperationsDashboard
         snapshot={snapshot}
+        canSeeFinance={canAccessFinance(session?.role)}
         students={students.map((student) => ({
           id: student.id,
           full_name: student.full_name,

@@ -30,6 +30,7 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { CONSULTATION_FEE, getConsultationBalance, getConsultationPaid } from "@/lib/finance";
 import type { AppRole, AuditLog, DashboardStats, Student } from "@/lib/types";
 import { formatCurrency, formatDate, normalizeKenyanPhone } from "@/lib/utils";
+import { canAccessFinance, isPrivilegedRole } from "@/lib/auth-shared";
 
 const kanbanStages = [
   {
@@ -141,11 +142,7 @@ const kanbanStages = [
 const PIPELINE_ITEMS_PER_PAGE = 10;
 
 function canManage(role: AppRole | null) {
-  return role === "admin" || role === "consultant" || role === "employee";
-}
-
-function canSeeRevenue(role: AppRole | null) {
-  return role === "admin" || role === "employee";
+  return isPrivilegedRole(role) || role === "consultant" || role === "employee";
 }
 
 function getPaymentTone(student: Student) {
@@ -197,6 +194,7 @@ export function DashboardWorkspace({
   const [stagePages, setStagePages] = useState<Record<string, number>>({});
   const [selectedPipelineStage, setSelectedPipelineStage] = useState<string>("inquiry");
   const manager = canManage(user?.role ?? null);
+  const canSeeFinance = canAccessFinance(user?.role ?? null);
 
   const countries = useMemo(
     () =>
@@ -226,16 +224,21 @@ export function DashboardWorkspace({
       const stageMatch = !filterStage || student.stage === filterStage;
       const countryMatch = !filterCountry || student.country_interest === filterCountry;
 
-      const totalPaid = getConsultationPaid(student);
       const paymentMatch =
+        !canSeeFinance ||
         !filterPayment ||
-        (filterPayment === "paid" && totalPaid >= CONSULTATION_FEE) ||
-        (filterPayment === "partial" && totalPaid > 0 && totalPaid < CONSULTATION_FEE) ||
-        (filterPayment === "unpaid" && totalPaid <= 0);
+        (() => {
+          const totalPaid = getConsultationPaid(student);
+          return (
+            (filterPayment === "paid" && totalPaid >= CONSULTATION_FEE) ||
+            (filterPayment === "partial" && totalPaid > 0 && totalPaid < CONSULTATION_FEE) ||
+            (filterPayment === "unpaid" && totalPaid <= 0)
+          );
+        })();
 
       return textMatch && stageMatch && countryMatch && paymentMatch;
     });
-  }, [students, search, filterStage, filterCountry, filterPayment]);
+  }, [students, search, filterStage, filterCountry, filterPayment, canSeeFinance]);
 
   const grouped = useMemo(
     () =>
@@ -358,7 +361,7 @@ export function DashboardWorkspace({
                 Welcome back{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#5f7182]">
-                Monitor student pipeline health, revenue exposure, and priority follow-up from one focused admin workspace.
+                Monitor student pipeline health, priority follow-up, and active student movement from one focused workspace.
               </p>
             </div>
 
@@ -370,7 +373,7 @@ export function DashboardWorkspace({
               <LinkButton href="/documents" variant="secondary" className="rounded-lg border-[#eadacc] bg-white/70 px-4 py-2.5 text-[#213343] hover:bg-white">
                 Documents
               </LinkButton>
-              {canSeeRevenue(user?.role ?? null) ? (
+              {canSeeFinance ? (
                 <LinkButton href="/financial-reports" variant="secondary" className="rounded-lg border-[#eadacc] bg-white/70 px-4 py-2.5 text-[#213343] hover:bg-white">
                   Financial Reports
                 </LinkButton>
@@ -380,6 +383,7 @@ export function DashboardWorkspace({
         </div>
 
         <div className="grid gap-3 bg-[#fff6ef] p-5 dark:bg-white/[0.03] sm:grid-cols-2 xl:grid-cols-4">
+          {canSeeFinance ? (
           <div className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Active Students</p>
@@ -390,7 +394,9 @@ export function DashboardWorkspace({
             <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{stats.totalStudents}</p>
             <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-300">{Math.round(stats.conversionRate)}% conversion</p>
           </div>
+          ) : null}
 
+          {canSeeFinance ? (
           <div className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Collected Revenue</p>
@@ -401,6 +407,7 @@ export function DashboardWorkspace({
             <p className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{formatCurrency(totalRevenue)}</p>
             <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">Pending {formatCurrency(totalPending)}</p>
           </div>
+          ) : null}
 
           <div className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
             <div className="flex items-center justify-between">
@@ -704,10 +711,12 @@ export function DashboardWorkspace({
                                 </div>
 
                                 <div className="mt-4 flex flex-wrap items-center gap-2">
+                                  {canSeeFinance ? (
                                   <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${payment.className}`}>
                                     {payment.label}
                                   </span>
-                                  {student.ielts_enrolled ? (
+                                  ) : null}
+                                  {canSeeFinance && student.ielts_enrolled ? (
                                     <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${
                                       student.ielts_payment_status === "paid"
                                         ? "bg-emerald-100 text-emerald-700"
@@ -728,6 +737,7 @@ export function DashboardWorkspace({
                                   ) : null}
                                 </div>
 
+                                {canSeeFinance ? (
                                 <div className="mt-4 space-y-2">
                                   <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
                                     <span>Consultation paid</span>
@@ -737,12 +747,15 @@ export function DashboardWorkspace({
                                     <div className="h-full rounded-full bg-emerald-500" style={{ width: `${paidPercent}%` }} />
                                   </div>
                                 </div>
+                                ) : null}
 
                                 <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#f0dfd0] pt-3 text-xs dark:border-white/10">
+                                  {canSeeFinance ? (
                                   <div>
                                     <p className="font-medium text-slate-400 dark:text-slate-500">Balance</p>
                                     <p className="mt-1 font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(amountOwed)}</p>
                                   </div>
+                                  ) : null}
                                   <div>
                                     <p className="font-medium text-slate-400 dark:text-slate-500">Updated</p>
                                     <p className="mt-1 font-semibold text-slate-700 dark:text-slate-200">{formatDate(student.updated_at)}</p>
@@ -817,7 +830,7 @@ export function DashboardWorkspace({
               </div>
 
               <div className="space-y-5 p-5">
-                {canSeeRevenue(user?.role ?? null) ? (
+                {canSeeFinance ? (
                   <div className="rounded-xl border border-[#eadacc] bg-[#fffaf5] p-4 dark:border-white/10 dark:bg-white/[0.04]">
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-sm font-semibold text-[#213343] dark:text-white">
@@ -974,6 +987,7 @@ export function DashboardWorkspace({
                   ))}
                 </select>
               </label>
+              {canSeeFinance ? (
               <label className="block text-sm text-slate-600 dark:text-slate-300">
                 <span className="mb-2 block font-medium text-[#213343] dark:text-white">Payment Status</span>
                 <select value={filterPayment} onChange={(event) => setFilterPayment(event.target.value)} className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-white/[0.06] dark:text-white">
@@ -983,6 +997,7 @@ export function DashboardWorkspace({
                   <option value="unpaid">Unpaid</option>
                 </select>
               </label>
+              ) : null}
             </div>
             <div className="flex justify-end gap-3 border-t border-[#efe1d4] px-6 py-4 dark:border-white/10">
               <Button type="button" variant="secondary" onClick={resetFilters}>

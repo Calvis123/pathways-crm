@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createUserRecord } from "@/lib/data";
 
+const roles = ["superadmin", "admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer", "partner"] as const;
+
 const schema = z.object({
   username: z.string().min(2),
   full_name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(8),
-  role: z.enum(["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer", "partner"])
+  role: z.enum(roles)
 });
 
 export async function POST(request: Request) {

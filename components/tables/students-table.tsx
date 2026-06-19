@@ -8,6 +8,7 @@ import { stageLabels, stageOrder } from "@/lib/constants";
 import { readJsonBody } from "@/lib/http";
 import type { AppRole, Student, StudentStage } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { canAccessFinance, isPrivilegedRole } from "@/lib/auth-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -17,7 +18,7 @@ type StudentSort = "registered_desc" | "registered_asc" | "source_asc" | "update
 const STUDENTS_PER_PAGE = 10;
 
 function canManage(role: AppRole | null) {
-  return role === "admin" || role === "consultant" || role === "employee";
+  return isPrivilegedRole(role) || role === "consultant" || role === "employee";
 }
 
 export function StudentsTable({ students, role }: { students: Student[]; role: AppRole | null }) {
@@ -76,13 +77,9 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
   const summary = useMemo(() => {
     const placed = students.filter((student) => ["placed", "employment"].includes(student.stage)).length;
     const consultation = students.filter((student) => student.stage === "consultation").length;
-    const paid = students.reduce(
-      (sum, student) => sum + student.consultation_upfront_paid + student.consultation_balance_paid,
-      0
-    );
     const countries = new Set(students.map((student) => student.country_interest).filter(Boolean));
 
-    return { placed, consultation, paid, countries: countries.size };
+    return { placed, consultation, countries: countries.size };
   }, [students]);
 
   const stageCounts = useMemo(
@@ -97,6 +94,11 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
   const allVisibleSelected =
     paginatedStudents.length > 0 && paginatedStudents.every((student) => selectedIds.includes(student.id));
   const manager = canManage(role);
+  const canSeeFinance = canAccessFinance(role);
+  const collectedTotal = useMemo(
+    () => students.reduce((sum, student) => sum + student.consultation_upfront_paid + student.consultation_balance_paid, 0),
+    [students]
+  );
 
   function toggleStudent(id: string) {
     setSelectedIds((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
@@ -202,7 +204,9 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
             { label: "Total Records", value: students.length, detail: `${filteredStudents.length} visible` },
             { label: "In Consultation", value: summary.consultation, detail: "Active follow-up" },
             { label: "Placed / Employment", value: summary.placed, detail: "Successful outcomes" },
-            { label: "Collected", value: formatCurrency(summary.paid), detail: `${summary.countries} destination markets` }
+            canSeeFinance
+              ? { label: "Collected", value: formatCurrency(collectedTotal), detail: `${summary.countries} destination markets` }
+              : { label: "Markets", value: summary.countries, detail: "Destination coverage" }
           ].map((item) => (
             <div key={item.label} className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
               <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{item.label}</p>
@@ -279,20 +283,24 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
               {stageChoices.map((stage) => <option key={stage} value={stage}>Move to {stageLabels[stage]}</option>)}
             </select>
             <Button type="button" onClick={() => runBulkAction("update_stage")}>Update Stage</Button>
-            <select value={bulkPayment} onChange={(event) => setBulkPayment(event.target.value as "full" | "partial" | "none")} className="rounded-lg border border-[#eadacc] bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-white">
-              <option value="partial">Partial Payment</option>
-              <option value="full">Full Payment</option>
-              <option value="none">No Payment</option>
-            </select>
-            <Button type="button" variant="secondary" onClick={() => runBulkAction("update_payment")}>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Update Payment
-            </Button>
+            {canSeeFinance ? (
+              <>
+                <select value={bulkPayment} onChange={(event) => setBulkPayment(event.target.value as "full" | "partial" | "none")} className="rounded-lg border border-[#eadacc] bg-white px-3 py-2.5 text-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-white">
+                  <option value="partial">Partial Payment</option>
+                  <option value="full">Full Payment</option>
+                  <option value="none">No Payment</option>
+                </select>
+                <Button type="button" variant="secondary" onClick={() => runBulkAction("update_payment")}>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Update Payment
+                </Button>
+              </>
+            ) : null}
             <Button type="button" variant="secondary" onClick={openBroadcastComposer}>
               <Mail className="mr-2 h-4 w-4" />
               Broadcast
             </Button>
-            {role === "admin" ? (
+            {isPrivilegedRole(role) ? (
               <Button type="button" className="bg-rose-600 text-white hover:bg-rose-700" onClick={() => runBulkAction("delete")}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
@@ -336,12 +344,12 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
           </div>
         </div>
 
-        <div className="hidden grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_130px_150px_130px] gap-4 border-b border-[#eadacc] bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[#8b5e3c] lg:grid dark:bg-white/[0.03]">
+        <div className={`hidden gap-4 border-b border-[#eadacc] bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[#8b5e3c] lg:grid dark:bg-white/[0.03] ${canSeeFinance ? "grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_130px_150px_130px]" : "grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_150px_130px]"}`}>
           <div />
           <div>Student</div>
           <div>Stage</div>
           <div>Market</div>
-          <div>Paid</div>
+          {canSeeFinance ? <div>Paid</div> : null}
           <div>Registered</div>
           <div>Record</div>
         </div>
@@ -358,7 +366,7 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
               .toUpperCase();
 
             return (
-              <article key={student.id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#fffaf5] dark:hover:bg-white/[0.04] lg:grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_130px_150px_130px] lg:items-center ${selectedIds.includes(student.id) ? "bg-[#fff1e6]" : ""}`}>
+              <article key={student.id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#fffaf5] dark:hover:bg-white/[0.04] lg:items-center ${canSeeFinance ? "lg:grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_130px_150px_130px]" : "lg:grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_150px_130px]"} ${selectedIds.includes(student.id) ? "bg-[#fff1e6]" : ""}`}>
                 <div>
                   {manager ? (
                     <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleStudent(student.id)} className="h-4 w-4 rounded border-[#d9c1ad] accent-[#213343]" />
@@ -383,10 +391,12 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
                 </div>
                 <div><Badge className="bg-[#fff1e6] text-[#8b5e3c] ring-[#eadacc] dark:bg-white/[0.08] dark:text-slate-200 dark:ring-white/10">{stageLabels[student.stage]}</Badge></div>
                 <div className="text-sm text-slate-700 dark:text-slate-200">{student.country_interest ?? "N/A"}</div>
+                {canSeeFinance ? (
                 <div>
                   <p className="font-semibold text-[#213343] dark:text-white">{formatCurrency(paid)}</p>
                   <p className="text-xs text-slate-500">{student.consultation_status ?? (student.consultation_requested ? "Requested" : "No consultation")}</p>
                 </div>
+                ) : null}
                 <div>
                   <p className="font-semibold text-[#213343] dark:text-white">{formatDate(student.created_at)}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{student.lead_source ?? "Unknown source"}</p>

@@ -17,64 +17,65 @@ export interface StudentPortalSession {
 }
 
 const publicExactPaths = new Set(["/", "/login", "/book-consultation", "/ielts-training", "/student-portal"]);
-const publicPrefixes = ["/api/session/", "/api/public/", "/api/portal/", "/_next/", "/favicon.ico"];
+const publicPrefixes = ["/api/session/", "/api/public/", "/api/portal/", "/api/students/register", "/_next/", "/favicon.ico"];
 const publicAssetPattern = /\.[a-z0-9]+$/i;
-const allAppRoles: AppRole[] = ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer", "partner"];
+export const allAppRoles: AppRole[] = ["superadmin", "admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer", "partner"];
+export const privilegedRoles: AppRole[] = ["superadmin", "admin"];
+export const financeRoles: AppRole[] = privilegedRoles;
+
+export function isPrivilegedRole(role: AppRole | null | undefined) {
+  return role === "superadmin" || role === "admin";
+}
+
+export function canAccessFinance(role: AppRole | null | undefined) {
+  return isPrivilegedRole(role);
+}
 
 const routeAccess: Array<{ prefix: string; roles: AppRole[] }> = [
-  { prefix: "/dashboard", roles: ["admin", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
-  { prefix: "/operating-system", roles: ["admin", "hr", "consultant", "operations", "employee"] },
-  { prefix: "/partner-dashboard", roles: ["admin", "operations", "employee", "partner"] },
-  { prefix: "/users", roles: ["admin"] },
-  { prefix: "/hr-dashboard", roles: ["admin", "hr", "employee"] },
-  { prefix: "/payments", roles: ["admin", "consultant", "operations", "employee"] },
-  { prefix: "/payment-tracker", roles: ["admin", "employee"] },
-  { prefix: "/payment-reminders", roles: ["admin", "consultant", "operations", "employee"] },
-  { prefix: "/financial-tools", roles: allAppRoles },
-  { prefix: "/financial-reports", roles: ["admin", "employee"] },
-  { prefix: "/students", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
-  { prefix: "/sales-funnel", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee"] },
-  { prefix: "/progress-reports", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee"] },
-  { prefix: "/segments", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee"] },
-  { prefix: "/consultations", roles: ["admin", "hr"] },
-  { prefix: "/reports", roles: ["admin", "hr"] },
-  { prefix: "/analytics", roles: ["admin", "hr", "operations", "employee"] },
-  { prefix: "/revenue-forecast", roles: ["admin", "hr", "operations", "employee"] },
-  { prefix: "/audit", roles: ["admin"] },
-  { prefix: "/system-monitor", roles: ["admin"] },
-  { prefix: "/referrals", roles: ["admin", "consultant", "marketing", "employee"] },
-  { prefix: "/portal-manager", roles: ["admin", "consultant", "operations", "employee"] },
-  { prefix: "/ielts-dashboard", roles: ["admin", "hr", "ielts_trainer", "employee", "operations"] },
-  { prefix: "/ielts-training", roles: ["admin", "hr", "ielts_trainer", "employee", "operations"] },
-  { prefix: "/documents", roles: ["admin", "operations", "employee"] },
-  { prefix: "/commissions", roles: ["admin", "operations", "employee"] },
-  { prefix: "/templates", roles: ["admin", "hr", "consultant", "marketing", "ielts_trainer"] },
-  { prefix: "/email-center", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
-  { prefix: "/whatsapp-bulk", roles: ["admin", "hr", "consultant", "marketing", "employee"] },
-  { prefix: "/notifications", roles: ["admin", "hr", "operations", "employee"] },
-  { prefix: "/bulk-actions", roles: ["admin", "consultant", "employee"] },
-  { prefix: "/task-manager", roles: ["admin", "consultant", "operations", "employee"] }
+  { prefix: "/dashboard", roles: ["superadmin", "admin", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
+  { prefix: "/operating-system", roles: ["superadmin", "admin", "hr", "consultant", "operations", "employee"] },
+  { prefix: "/partner-dashboard", roles: ["superadmin", "admin", "operations", "employee", "partner"] },
+  { prefix: "/users", roles: privilegedRoles },
+  { prefix: "/hr-dashboard", roles: ["superadmin", "admin", "hr", "employee"] },
+  { prefix: "/payments", roles: financeRoles },
+  { prefix: "/payment-tracker", roles: financeRoles },
+  { prefix: "/payment-reminders", roles: financeRoles },
+  { prefix: "/financial-tools", roles: financeRoles },
+  { prefix: "/financial-reports", roles: financeRoles },
+  { prefix: "/students", roles: ["superadmin", "admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
+  { prefix: "/sales-funnel", roles: financeRoles },
+  { prefix: "/progress-reports", roles: financeRoles },
+  { prefix: "/segments", roles: financeRoles },
+  { prefix: "/consultations", roles: ["superadmin", "admin", "hr"] },
+  { prefix: "/reports", roles: financeRoles },
+  { prefix: "/analytics", roles: financeRoles },
+  { prefix: "/revenue-forecast", roles: financeRoles },
+  { prefix: "/audit", roles: privilegedRoles },
+  { prefix: "/system-monitor", roles: privilegedRoles },
+  { prefix: "/referrals", roles: ["superadmin", "admin", "consultant", "marketing", "employee"] },
+  { prefix: "/portal-manager", roles: ["superadmin", "admin", "consultant", "operations", "employee"] },
+  { prefix: "/ielts-dashboard", roles: ["superadmin", "admin", "hr", "ielts_trainer", "employee", "operations"] },
+  { prefix: "/ielts-training", roles: ["superadmin", "admin", "hr", "ielts_trainer", "employee", "operations"] },
+  { prefix: "/documents", roles: ["superadmin", "admin", "operations", "employee"] },
+  { prefix: "/commissions", roles: financeRoles },
+  { prefix: "/templates", roles: ["superadmin", "admin", "hr", "consultant", "marketing", "ielts_trainer"] },
+  { prefix: "/email-center", roles: ["superadmin", "admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
+  { prefix: "/whatsapp-bulk", roles: ["superadmin", "admin", "hr", "consultant", "marketing", "employee"] },
+  { prefix: "/notifications", roles: ["superadmin", "admin", "hr", "operations", "employee"] },
+  { prefix: "/bulk-actions", roles: ["superadmin", "admin", "consultant", "employee"] },
+  { prefix: "/task-manager", roles: ["superadmin", "admin", "consultant", "operations", "employee"] }
 ];
 
 export const permissionMatrix = [
-  { label: "User Management", prefix: "/users", roles: ["admin"] },
-  { label: "Operating System", prefix: "/operating-system", roles: ["admin", "hr", "consultant", "operations", "employee"] },
-  { label: "Partner Dashboard", prefix: "/partner-dashboard", roles: ["admin", "operations", "employee", "partner"] },
-  { label: "HR Dashboard", prefix: "/hr-dashboard", roles: ["admin", "hr", "employee"] },
-  { label: "System Monitor", prefix: "/system-monitor", roles: ["admin"] },
-  { label: "Reports", prefix: "/reports", roles: ["admin", "hr"] },
-  { label: "Audit Logs", prefix: "/audit", roles: ["admin"] },
-  { label: "Analytics", prefix: "/analytics", roles: ["admin", "hr", "operations", "employee"] },
-  { label: "Financial Tools", prefix: "/financial-tools", roles: allAppRoles },
-  { label: "Financial Reports", prefix: "/financial-reports", roles: ["admin", "employee"] },
-  { label: "Revenue Forecast", prefix: "/revenue-forecast", roles: ["admin", "hr", "operations", "employee"] },
-  { label: "Students", prefix: "/students", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] as AppRole[] },
-  { label: "Consultations", prefix: "/consultations", roles: ["admin", "hr"] },
-  { label: "Documents", prefix: "/documents", roles: ["admin", "operations", "employee"] },
-  { label: "Email Center", prefix: "/email-center", roles: ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"] as AppRole[] },
-  { label: "WhatsApp Bulk", prefix: "/whatsapp-bulk", roles: ["admin", "hr", "consultant", "marketing", "employee"] },
-  { label: "Notifications", prefix: "/notifications", roles: ["admin", "hr", "operations", "employee"] },
-  { label: "Portal Manager", prefix: "/portal-manager", roles: ["admin", "consultant", "operations", "employee"] }
+  ...routeAccess.map((entry) => ({
+    label: entry.prefix
+      .slice(1)
+      .split("-")
+      .map((word) => roleLabel(word as AppRole))
+      .join(" "),
+    prefix: entry.prefix,
+    roles: entry.roles
+  }))
 ] satisfies Array<{ label: string; prefix: string; roles: AppRole[] }>;
 
 export function roleLabel(role: AppRole) {

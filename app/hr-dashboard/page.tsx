@@ -14,6 +14,7 @@ import {
 import { ModuleShell } from "@/components/dashboard/module-shell";
 import { HrSectionNav } from "@/components/hr/hr-section-nav";
 import { Card, CardHeader } from "@/components/ui/card";
+import { canAccessFinance, getCurrentSession } from "@/lib/auth";
 import {
   getAuditLogs,
   getCommissions,
@@ -29,14 +30,16 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default async function HrDashboardPage() {
+  const session = await getCurrentSession();
+  const canSeeFinance = canAccessFinance(session?.role);
   const [students, users, consultations, documents, payments, commissions, referrals, tasks, messages, auditLogs] =
     await Promise.all([
       getStudents(),
       getUsers(),
       getConsultations(),
       getDocuments(),
-      getPayments(),
-      getCommissions(),
+      canSeeFinance ? getPayments() : Promise.resolve([]),
+      canSeeFinance ? getCommissions() : Promise.resolve([]),
       getReferrals(),
       getTasks(),
       getPortalMessages(),
@@ -49,8 +52,8 @@ export default async function HrDashboardPage() {
   const pendingDocuments = documents.filter((item) => ["pending", "uploaded", "under_review"].includes(item.status));
   const openTasks = tasks.filter((item) => !["completed", "cancelled"].includes(item.status));
   const unreadMessages = messages.filter((item) => item.direction === "student_to_crm" && !item.is_read);
-  const pendingPayments = payments.filter((item) => item.status !== "paid");
-  const overdueCommissions = commissions.filter((item) => item.status === "overdue");
+  const pendingPayments = canSeeFinance ? payments.filter((item) => item.status !== "paid") : [];
+  const overdueCommissions = canSeeFinance ? commissions.filter((item) => item.status === "overdue") : [];
   const totalCollected = payments
     .filter((item) => item.status === "paid")
     .reduce((sum, item) => sum + item.amount, 0);
@@ -83,12 +86,12 @@ export default async function HrDashboardPage() {
       href: "/hr-dashboard/operations",
       tone: unreadMessages.length > 0 ? "warning" : "good"
     },
-    {
+    ...(canSeeFinance ? [{
       title: "Overdue commissions",
       value: overdueCommissions.length,
       href: "/hr-dashboard/operations",
       tone: overdueCommissions.length > 0 ? "warning" : "good"
-    },
+    } satisfies { title: string; value: number; href: Route; tone: "warning" | "good" }] : []),
     {
       title: "Open team tasks",
       value: openTasks.length,
@@ -124,12 +127,14 @@ export default async function HrDashboardPage() {
             detail="Consultations, documents, portal replies"
             icon={<Bell className="h-4 w-4" />}
           />
+          {canSeeFinance ? (
           <MetricCard
             label="Collected"
             value={formatCurrency(totalCollected)}
             detail={`${formatCurrency(pendingValue)} still pending`}
             icon={<Banknote className="h-4 w-4" />}
           />
+          ) : null}
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -246,7 +251,7 @@ export default async function HrDashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <MiniStat label="Referrals" value={referrals.length} />
           <MiniStat label="Consultations" value={consultations.length} />
-          <MiniStat label="Payments" value={payments.length} />
+          {canSeeFinance ? <MiniStat label="Payments" value={payments.length} /> : null}
           <MiniStat label="Audit Events Reviewed" value={auditLogs.length} />
         </div>
       </div>

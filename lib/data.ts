@@ -2,9 +2,11 @@ import { createAdminClient, hasSupabaseEnv } from "@/lib/supabase/admin";
 import bcrypt from "bcryptjs";
 import { cache } from "react";
 import {
+  canAccessFinance,
   filterStudentsByRole,
   getCurrentSession,
-  getCurrentStudentPortalSession
+  getCurrentStudentPortalSession,
+  isPrivilegedRole
 } from "@/lib/auth";
 import { readLocalDb, writeLocalDb } from "@/lib/local-store";
 import type {
@@ -212,27 +214,27 @@ async function upsertPublicRegistrationProfile(input: {
 }
 
 function canManageStudentRecords(role: AppRole | undefined) {
-  return role === "admin" || role === "consultant" || role === "employee";
+  return isPrivilegedRole(role) || role === "consultant" || role === "employee";
 }
 
 function canManageSegments(role: AppRole | undefined) {
-  return role === "admin" || role === "consultant" || role === "marketing" || role === "operations" || role === "employee";
+  return isPrivilegedRole(role) || role === "consultant" || role === "marketing" || role === "operations" || role === "employee";
 }
 
-function canManageFinance(role: AppRole | undefined) {
-  return role === "admin" || role === "employee";
+function canManageFinance(role: AppRole | null | undefined) {
+  return canAccessFinance(role);
 }
 
 function canRecordPayments(role: AppRole | undefined) {
-  return role === "admin" || role === "consultant" || role === "operations" || role === "employee";
+  return canAccessFinance(role);
 }
 
 function canManageTemplates(role: AppRole | undefined) {
-  return role === "admin" || role === "consultant" || role === "marketing" || role === "ielts_trainer";
+  return isPrivilegedRole(role) || role === "consultant" || role === "marketing" || role === "ielts_trainer";
 }
 
 function canManageConsultations(role: AppRole | undefined) {
-  return role === "admin";
+  return isPrivilegedRole(role);
 }
 
 function getStudentCollectedValue(student: Student) {
@@ -304,10 +306,38 @@ function logSupabaseReadFallback(source: string, error: unknown) {
   console.warn(`[data] Supabase ${source} read failed. Falling back to local data. ${describeDataError(error)}`);
 }
 
+function redactStudentFinance<T extends Student>(student: T): T {
+  return {
+    ...student,
+    deposit_paid: 0,
+    ielts_amount: 0,
+    ielts_payment_status: null,
+    payment_status: null,
+    payment_due_date: null,
+    payment_amount: 0,
+    payment_paid: 0,
+    payment_date: null,
+    payment_method: null,
+    payment_notes: null,
+    commission_amount: null,
+    commission_status: null,
+    commission_due_date: null,
+    commission_paid_date: null,
+    commission_institution: null,
+    commission_notes: null,
+    consultation_upfront_paid: 0,
+    consultation_balance_paid: 0
+  };
+}
+
+function redactStudentsForRole<T extends Student>(students: T[], role: AppRole | null | undefined) {
+  return canManageFinance(role) ? students : students.map(redactStudentFinance);
+}
+
 async function getLocalStudentsForSession() {
   const session = await getCurrentSession();
   const db = await readDb();
-  return filterStudentsByRole(db.students, session);
+  return redactStudentsForRole(filterStudentsByRole(db.students, session), session?.role);
 }
 
 async function getLocalPayments(options?: { startDate?: string; endDate?: string }) {
@@ -831,9 +861,43 @@ async function getLocalOperatingSystemSnapshot() {
   });
 }
 
+function redactOperatingSystemFinance(snapshot: OperatingSystemSnapshot): OperatingSystemSnapshot {
+  return {
+    ...snapshot,
+    partnerAgreements: snapshot.partnerAgreements.map((agreement) => ({
+      ...agreement,
+      commission_rate: null,
+      retainer_amount: null,
+      fee_structure: {}
+    })),
+    programmes: snapshot.programmes.map((programme) => ({
+      ...programme,
+      tuition_fee: 0
+    })),
+    applications: snapshot.applications.map((application) => ({
+      ...application,
+      programme: application.programme ? { ...application.programme, tuition_fee: 0 } : application.programme
+    })),
+    placements: snapshot.placements.map((placement) => ({
+      ...placement,
+      salary_range: null
+    })),
+    revenueRecords: [],
+    partnerKpis: snapshot.partnerKpis.map((kpi) => ({ ...kpi, roi: 0 })),
+    revenueBlend: snapshot.revenueBlend.map((item) => ({ ...item, amount: 0, share: 0 })),
+    metrics: {
+      ...snapshot.metrics,
+      partnerRoi: 0
+    }
+  };
+}
+
 export async function getOperatingSystemSnapshot(): Promise<OperatingSystemSnapshot> {
+  const session = await getCurrentSession();
+
   if (!hasSupabaseEnv()) {
-    return getLocalOperatingSystemSnapshot();
+    const snapshot = await getLocalOperatingSystemSnapshot();
+    return canManageFinance(session?.role) ? snapshot : redactOperatingSystemFinance(snapshot);
   }
 
   try {
@@ -890,7 +954,7 @@ export async function getOperatingSystemSnapshot(): Promise<OperatingSystemSnaps
     const failed = results.find((result) => result.error);
     if (failed?.error) throw failed.error;
 
-    return buildOperatingSystemSnapshot({
+    const snapshot = buildOperatingSystemSnapshot({
       students: (studentsResult.data ?? []) as Student[],
       documents: (documentsResult.data ?? []) as DocumentRecord[],
       payments: (paymentsResult.data ?? []) as PaymentRecord[],
@@ -906,9 +970,11 @@ export async function getOperatingSystemSnapshot(): Promise<OperatingSystemSnaps
       marketConfigs: (marketsResult.data ?? []) as MarketConfig[],
       consultantTraining: (trainingResult.data ?? []) as ConsultantTraining[]
     });
+    return canManageFinance(session?.role) ? snapshot : redactOperatingSystemFinance(snapshot);
   } catch (error) {
     logSupabaseReadFallback("operating system snapshot", error);
-    return getLocalOperatingSystemSnapshot();
+    const snapshot = await getLocalOperatingSystemSnapshot();
+    return canManageFinance(session?.role) ? snapshot : redactOperatingSystemFinance(snapshot);
   }
 }
 
@@ -933,7 +999,7 @@ export const getStudents = cache(async function getStudents() {
 
   const { data, error } = result;
   if (error) throw error;
-  return filterStudentsByRole((data ?? []) as Student[], session);
+  return redactStudentsForRole(filterStudentsByRole((data ?? []) as Student[], session), session?.role);
 });
 
 export async function getStudentsByStage() {
@@ -1510,6 +1576,9 @@ export const getUnreadPortalMessages = cache(async function getUnreadPortalMessa
 
 export async function createStudent(input: Partial<Student>) {
   const session = await getCurrentSession();
+  if (session) {
+    assertCanWriteStudentFinance(input, session.role);
+  }
 
   if (!hasSupabaseEnv()) {
     const db = await readDb();
@@ -1818,51 +1887,99 @@ export async function createPublicStudentRegistration(input: {
     .filter(Boolean)
     .join(" | ");
 
-  const student = await createStudent({
+  const existingStudent = await getStudentByEmailUnfiltered(input.email);
+  const registrationPatch: Partial<Student> = {
     full_name: input.full_name,
-    email: input.email,
-    phone: input.phone ?? null,
-    passport_number: input.passport_number ?? null,
-    location: input.location ?? null,
-    country_interest: effectiveCountryInterest,
-    program_level: input.program_level ?? null,
-    university_name: input.university_name ?? null,
-    stage: input.stage ?? "lead",
-    payment_status: input.payment_status ?? "pending",
-    ielts_enrolled: input.ielts_enrolled ?? false,
-    ielts_amount: input.ielts_amount ?? 0,
-    ielts_payment_status: input.ielts_payment_status ?? "unpaid",
-    consultation_upfront_paid: input.consultation_upfront_paid ?? 0,
-    consultation_balance_paid: input.consultation_balance_paid ?? 0,
-    lead_source: input.lead_source ?? input.source ?? "Website",
-    referral_code: input.referral_code ?? null,
-    notes: notes || "Public student registration",
-    created_by: null
-  });
+    phone: input.phone ?? existingStudent?.phone ?? null,
+    passport_number: input.passport_number ?? existingStudent?.passport_number ?? null,
+    location: input.location ?? existingStudent?.location ?? null,
+    country_interest: effectiveCountryInterest ?? existingStudent?.country_interest ?? null,
+    program_level: input.program_level ?? existingStudent?.program_level ?? null,
+    university_name: input.university_name ?? existingStudent?.university_name ?? null,
+    stage: input.stage ?? existingStudent?.stage ?? "lead",
+    payment_status: input.payment_status ?? existingStudent?.payment_status ?? "pending",
+    ielts_enrolled: input.ielts_enrolled ?? existingStudent?.ielts_enrolled ?? false,
+    ielts_amount: input.ielts_amount ?? existingStudent?.ielts_amount ?? 0,
+    ielts_payment_status: input.ielts_payment_status ?? existingStudent?.ielts_payment_status ?? "unpaid",
+    consultation_upfront_paid:
+      input.consultation_upfront_paid ?? existingStudent?.consultation_upfront_paid ?? 0,
+    consultation_balance_paid:
+      input.consultation_balance_paid ?? existingStudent?.consultation_balance_paid ?? 0,
+    lead_source: input.lead_source ?? input.source ?? existingStudent?.lead_source ?? "Website",
+    referral_code: input.referral_code ?? existingStudent?.referral_code ?? null,
+    notes: [existingStudent?.notes ?? null, notes || "Public student registration"].filter(Boolean).join("\n")
+  };
 
-  await upsertPublicRegistrationProfile({
-    studentId: student.id,
-    notes: input.notes,
-    program_level: input.program_level ?? null,
-    country_interest: effectiveCountryInterest
-  });
+  let student: Student;
 
-  await logAudit({
-    action: "Public Student Registration Captured",
-    table_name: "students",
-    related_id: student.id,
-    record_label: student.full_name,
-    new_value: JSON.stringify({
-      source: input.source ?? null,
-      campaign: input.campaign ?? null,
-      lead_source: input.lead_source ?? input.source ?? "Website",
-      submitted_country_interest: submittedCountry,
-      effective_country_interest: effectiveCountryInterest,
-      stage: input.stage ?? "lead"
-    })
-  });
+  if (existingStudent) {
+    const updatedAt = new Date().toISOString();
 
-  await provisionStudentPortalAccess(student.id, "registration");
+    if (!hasSupabaseEnv()) {
+      const db = await readDb();
+      student = {
+        ...existingStudent,
+        ...registrationPatch,
+        updated_at: updatedAt
+      };
+      db.students = db.students.map((item) => (item.id === existingStudent.id ? student : item));
+      await writeLocalDb(db);
+    } else {
+      const { data, error } = await admin()
+        .from("students")
+        .update({
+          ...registrationPatch,
+          updated_at: updatedAt
+        })
+        .eq("id", existingStudent.id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      student = data as Student;
+    }
+  } else {
+    student = await createStudent({
+      ...registrationPatch,
+      email: input.email,
+      created_by: null
+    });
+  }
+
+  try {
+    await upsertPublicRegistrationProfile({
+      studentId: student.id,
+      notes: input.notes,
+      program_level: input.program_level ?? null,
+      country_interest: effectiveCountryInterest
+    });
+  } catch (error) {
+    console.warn(`[public-registration] Profile sync failed for ${student.id}: ${describeDataError(error)}`);
+  }
+
+  try {
+    await logAudit({
+      action: existingStudent ? "Public Student Registration Updated" : "Public Student Registration Captured",
+      table_name: "students",
+      related_id: student.id,
+      record_label: student.full_name,
+      new_value: JSON.stringify({
+        source: input.source ?? null,
+        campaign: input.campaign ?? null,
+        lead_source: input.lead_source ?? input.source ?? "Website",
+        submitted_country_interest: submittedCountry,
+        effective_country_interest: effectiveCountryInterest,
+        stage: input.stage ?? "lead"
+      })
+    });
+  } catch (error) {
+    console.warn(`[public-registration] Audit log failed for ${student.id}: ${describeDataError(error)}`);
+  }
+
+  try {
+    await provisionStudentPortalAccess(student.id, "registration");
+  } catch (error) {
+    console.warn(`[public-registration] Portal provisioning failed for ${student.id}: ${describeDataError(error)}`);
+  }
 
   return student;
 }
@@ -1974,11 +2091,15 @@ export async function runStudentBulkAction(input: {
   if (input.action === "export") {
     return {
       count: selected.length,
-      csv: toStudentCsv(selected)
+      csv: toStudentCsv(selected, canManageFinance(session.role))
     };
   }
 
-  if (input.action === "delete" && session.role !== "admin") {
+  if (input.action === "update_payment" && !canManageFinance(session.role)) {
+    throw new Error("Only admins and superadmins can update payment information.");
+  }
+
+  if (input.action === "delete" && !isPrivilegedRole(session.role)) {
     throw new Error("Only admins can delete students.");
   }
 
@@ -2159,7 +2280,36 @@ export async function runStudentBulkAction(input: {
   return { count: selected.length };
 }
 
-function toStudentCsv(students: Student[]) {
+const studentFinanceFields = new Set<keyof Student>([
+  "deposit_paid",
+  "ielts_amount",
+  "ielts_payment_status",
+  "payment_status",
+  "payment_due_date",
+  "payment_amount",
+  "payment_paid",
+  "payment_date",
+  "payment_method",
+  "payment_notes",
+  "commission_amount",
+  "commission_status",
+  "commission_due_date",
+  "commission_paid_date",
+  "commission_institution",
+  "commission_notes",
+  "consultation_upfront_paid",
+  "consultation_balance_paid"
+]);
+
+function assertCanWriteStudentFinance(input: Partial<Student>, role: AppRole | undefined) {
+  if (canManageFinance(role)) return;
+  const touchedFinanceFields = Object.keys(input).filter((key) => studentFinanceFields.has(key as keyof Student));
+  if (touchedFinanceFields.length > 0) {
+    throw new Error("Only admins and superadmins can create or update money fields.");
+  }
+}
+
+function toStudentCsv(students: Student[], includeFinance = true) {
   const headers = [
     "full_name",
     "email",
@@ -2167,30 +2317,33 @@ function toStudentCsv(students: Student[]) {
     "country_interest",
     "program_level",
     "stage",
-    "payment_status",
     "consultation_status",
     "registration_source",
     "registered_at",
     "updated_at"
   ];
+  if (includeFinance) {
+    headers.splice(6, 0, "payment_status");
+  }
 
-  const rows = students.map((student) =>
-    [
+  const rows = students.map((student) => {
+    const row = [
       student.full_name,
       student.email,
       student.phone ?? "",
       student.country_interest ?? "",
       student.program_level ?? "",
       student.stage,
-      student.payment_status ?? "",
       student.consultation_status ?? "",
       student.lead_source ?? "",
       student.created_at,
       student.updated_at
-    ]
+    ];
+    if (includeFinance) row.splice(6, 0, student.payment_status ?? "");
+    return row
       .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-      .join(",")
-  );
+      .join(",");
+  });
 
   return [headers.join(","), ...rows].join("\n");
 }
@@ -2206,6 +2359,7 @@ export async function updateStudent(id: string, input: Partial<Student>) {
   if (!session || !canManageStudentRecords(session.role)) {
     throw new Error("You do not have permission to update students.");
   }
+  assertCanWriteStudentFinance(input, session.role);
 
   if (!hasSupabaseEnv()) {
     const db = await readDb();
@@ -2609,11 +2763,11 @@ export async function completeConsultantTrainingModule(input: { id: string; scor
 }
 
 function canManageOperatingSystem(role: AppRole | undefined) {
-  return role === "admin" || role === "employee" || role === "operations" || role === "hr";
+  return isPrivilegedRole(role) || role === "employee" || role === "operations" || role === "hr";
 }
 
 function canManagePartnerRecords(role: AppRole | undefined) {
-  return role === "admin" || role === "employee" || role === "operations";
+  return isPrivilegedRole(role) || role === "employee" || role === "operations";
 }
 
 export async function createPartnerRecord(input: {
@@ -2706,7 +2860,7 @@ export async function createPartnerAgreementRecord(input: {
   renewal_date?: string | null;
 }) {
   const session = await getCurrentSession();
-  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create partner agreements.");
+  if (!canManageFinance(session?.role)) throw new Error("Only admins and superadmins can create partner agreements.");
   const payload = {
     partner_id: input.partner_id,
     agreement_type: input.agreement_type,
@@ -2740,7 +2894,7 @@ export async function createPartnerAgreementRecord(input: {
 
 export async function updatePartnerAgreementRecord(id: string, input: Partial<PartnerAgreement>) {
   const session = await getCurrentSession();
-  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to update partner agreements.");
+  if (!canManageFinance(session?.role)) throw new Error("Only admins and superadmins can update partner agreements.");
 
   if (!hasSupabaseEnv()) {
     const db = await readDb();
@@ -2767,7 +2921,7 @@ export async function createProgrammeRecord(input: {
   active?: boolean;
 }) {
   const session = await getCurrentSession();
-  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create programmes.");
+  if (!canManageFinance(session?.role)) throw new Error("Only admins and superadmins can create programmes.");
   const payload = {
     partner_id: input.partner_id,
     name: input.name,
@@ -2794,7 +2948,7 @@ export async function createProgrammeRecord(input: {
 
 export async function updateProgrammeRecord(id: string, input: Partial<Programme>) {
   const session = await getCurrentSession();
-  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to update programmes.");
+  if (!canManageFinance(session?.role)) throw new Error("Only admins and superadmins can update programmes.");
 
   if (!hasSupabaseEnv()) {
     const db = await readDb();
@@ -2878,7 +3032,7 @@ export async function createRevenueRecord(input: {
   notes?: string | null;
 }) {
   const session = await getCurrentSession();
-  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create revenue records.");
+  if (!canManageFinance(session?.role)) throw new Error("Only admins and superadmins can create revenue records.");
   const payload = {
     student_id: input.student_id ?? null,
     partner_id: input.partner_id ?? null,
@@ -3021,8 +3175,8 @@ export async function createConsultantTrainingRecord(input: {
 
 export async function deleteStudent(id: string) {
   const session = await getCurrentSession();
-  if (session?.role !== "admin") {
-    throw new Error("Only admins can delete students.");
+  if (!isPrivilegedRole(session?.role)) {
+    throw new Error("Only admins and superadmins can delete students.");
   }
 
   const student = await getStudentById(id);
@@ -3399,6 +3553,11 @@ export async function createReferral(input: {
   reward_amount?: number;
   notes?: string | null;
 }) {
+  const session = await getCurrentSession();
+  if ((input.reward_amount ?? 0) > 0 && !canManageFinance(session?.role)) {
+    throw new Error("Only admins and superadmins can set referral reward amounts.");
+  }
+
   if (!hasSupabaseEnv()) {
     const db = await readDb();
     const referral: ReferralRecord = {
@@ -3455,6 +3614,11 @@ export async function createReferral(input: {
 }
 
 export async function updateReferralStatus(id: string, status: ReferralRecord["status"]) {
+  const session = await getCurrentSession();
+  if (status === "rewarded" && !canManageFinance(session?.role)) {
+    throw new Error("Only admins and superadmins can mark referral rewards as paid.");
+  }
+
   if (!hasSupabaseEnv()) {
     const db = await readDb();
     const existing = db.referrals.find((referral) => referral.id === id);
@@ -3527,7 +3691,7 @@ export async function updateUserRecord(input: {
 }) {
   const session = await getCurrentSession();
 
-  if (!session || session.role !== "admin") {
+  if (!session || !isPrivilegedRole(session.role)) {
     throw new Error("You do not have permission to edit users.");
   }
 
@@ -3623,7 +3787,7 @@ export async function createUserRecord(input: {
 }) {
   const session = await getCurrentSession();
 
-  if (!session || session.role !== "admin") {
+  if (!session || !isPrivilegedRole(session.role)) {
     throw new Error("You do not have permission to create users.");
   }
 
@@ -3696,7 +3860,7 @@ export async function createUserRecord(input: {
 export async function resetUserPassword(id: string, password: string) {
   const session = await getCurrentSession();
 
-  if (!session || session.role !== "admin") {
+  if (!session || !isPrivilegedRole(session.role)) {
     throw new Error("You do not have permission to reset passwords.");
   }
 
@@ -3816,7 +3980,7 @@ export async function registerPublicUser(input: {
 export async function deleteUserRecord(id: string) {
   const session = await getCurrentSession();
 
-  if (!session || session.role !== "admin") {
+  if (!session || !isPrivilegedRole(session.role)) {
     throw new Error("You do not have permission to delete users.");
   }
 
@@ -5239,6 +5403,11 @@ export async function sendPaymentReminder(input: {
   studentId: string;
   method?: "whatsapp" | "sms";
 }) {
+  const session = await getCurrentSession();
+  if (!canManageFinance(session?.role)) {
+    throw new Error("Only admins and superadmins can send payment reminders.");
+  }
+
   const method = input.method ?? "whatsapp";
   const student = await getStudentById(input.studentId);
 
@@ -5291,6 +5460,11 @@ export async function bulkSendPaymentReminders(input: {
   studentIds: string[];
   method?: "whatsapp" | "sms";
 }) {
+  const session = await getCurrentSession();
+  if (!canManageFinance(session?.role)) {
+    throw new Error("Only admins and superadmins can send payment reminders.");
+  }
+
   const method = input.method ?? "whatsapp";
   const students = await getStudents();
   const selected = students.filter((student) => input.studentIds.includes(student.id));
@@ -5418,8 +5592,8 @@ export async function markCommissionAsPaid(input: {
 }) {
   const session = await getCurrentSession();
 
-  if (!session || session.role !== "admin") {
-    throw new Error("Only admins can mark commissions as paid.");
+  if (!session || !isPrivilegedRole(session.role)) {
+    throw new Error("Only admins and superadmins can mark commissions as paid.");
   }
 
   const student = await getStudentById(input.studentId);

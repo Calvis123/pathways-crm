@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { deleteUserRecord, resetUserPassword, updateUserRecord } from "@/lib/data";
 
+const roles = ["superadmin", "admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer", "partner"] as const;
+
 const updateSchema = z.object({
   username: z.string().min(2),
   full_name: z.string().min(2),
   email: z.string().email(),
-  role: z.enum(["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer", "partner"]),
+  role: z.enum(roles),
   status: z.enum(["active", "inactive"]),
   phone: z.string().optional().nullable()
 });

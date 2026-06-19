@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { StudentProfileNav } from "@/components/layout/student-profile-nav";
 import { StudentTimelineView } from "@/components/tables/student-timeline-view";
+import { canAccessFinance, getCurrentSession } from "@/lib/auth";
 import { getDocuments, getLeadTemperatureSnapshotByStudentId, getStudentActivityTimeline, getStudentById, getStudentNotes } from "@/lib/data";
 
 export default async function StudentTimelinePage({ params }: { params: Promise<{ id: string }> }) {
@@ -9,11 +10,12 @@ export default async function StudentTimelinePage({ params }: { params: Promise<
 
   if (!student) notFound();
 
-  const [documents, notes, activities, temperature] = await Promise.all([
+  const [documents, notes, activities, temperature, session] = await Promise.all([
     getDocuments(),
     getStudentNotes(id),
     getStudentActivityTimeline(id),
-    getLeadTemperatureSnapshotByStudentId(id)
+    getLeadTemperatureSnapshotByStudentId(id),
+    getCurrentSession()
   ]);
 
   return (
@@ -24,6 +26,7 @@ export default async function StudentTimelinePage({ params }: { params: Promise<
         documents={documents.filter((document) => document.student_id === id)}
         notes={notes}
         activities={activities}
+        canSeeFinance={canAccessFinance(session?.role)}
       />
     </div>
   );

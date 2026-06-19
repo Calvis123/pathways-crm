@@ -6,7 +6,8 @@ import type { AppRole, AppUserRecord } from "@/lib/types";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 const roleLabels: Record<AppUserRecord["role"], string> = {
-  employee: "Super Admin",
+  superadmin: "Super Admin",
+  employee: "Employee",
   admin: "Admin",
   hr: "HR",
   operations: "Operations",
@@ -17,8 +18,9 @@ const roleLabels: Record<AppUserRecord["role"], string> = {
 };
 
 const roleDescriptions: Record<AppUserRecord["role"], string> = {
-  employee: "Full control",
-  admin: "Finance and administration",
+  superadmin: "Owner-level full control",
+  employee: "General CRM operations",
+  admin: "Full system, user, and finance control",
   hr: "System oversight",
   operations: "Documents and process",
   marketing: "Leads and campaigns",
@@ -28,7 +30,8 @@ const roleDescriptions: Record<AppUserRecord["role"], string> = {
 };
 
 const roleBadgeTone: Record<AppUserRecord["role"], string> = {
-  employee: "bg-[linear-gradient(135deg,#213343,#3f5a68)] text-gold",
+  superadmin: "bg-[linear-gradient(135deg,#213343,#3f5a68)] text-gold",
+  employee: "bg-slate-500 text-white",
   admin: "bg-sky-500 text-white",
   hr: "bg-teal-500 text-white",
   operations: "bg-emerald-500 text-white",
@@ -39,8 +42,9 @@ const roleBadgeTone: Record<AppUserRecord["role"], string> = {
 };
 
 const allRoles: AppUserRecord["role"][] = [
-  "employee",
+  "superadmin",
   "admin",
+  "employee",
   "hr",
   "operations",
   "marketing",
@@ -431,8 +435,9 @@ function RoleField() {
         <option value="" disabled>
           Select role
         </option>
-        <option value="employee">Super Admin (Owner)</option>
+        <option value="superadmin">Super Admin (Owner)</option>
         <option value="admin">Admin</option>
+        <option value="employee">Employee</option>
         <option value="hr">HR</option>
         <option value="operations">Operations</option>
         <option value="marketing">Marketing</option>
@@ -441,7 +446,7 @@ function RoleField() {
         <option value="partner">Partner</option>
       </select>
       <span className="mt-2 block text-xs text-slate-500 dark:text-slate-400">
-        Super Admin: Full control | Admin: Finance & Admin | Operations: Documents | Marketing: Leads
+        Super Admin/Admin: Full control including finance | Operations: Documents | Marketing: Leads
       </span>
     </label>
   );

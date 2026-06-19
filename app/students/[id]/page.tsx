@@ -18,7 +18,7 @@ import { StudentOperatingActions } from "@/components/students/student-operating
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { stageLabels } from "@/lib/constants";
-import { getCurrentSession } from "@/lib/auth";
+import { canAccessFinance, getCurrentSession, isPrivilegedRole } from "@/lib/auth";
 import {
   getConsultations,
   getDocuments,
@@ -88,9 +88,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     .filter((checkpoint) => checkpoint.entity_type === "student" && checkpoint.entity_id === id && !checkpoint.passed)
     .map((checkpoint) => ({ id: checkpoint.id, stage: checkpoint.stage, label: checkpoint.label }));
   const consultants = users
-    .filter((user) => ["admin", "consultant", "operations", "employee"].includes(user.role) && user.status === "active")
+    .filter((user) => ["superadmin", "admin", "consultant", "operations", "employee"].includes(user.role) && user.status === "active")
     .map((user) => ({ id: user.id, username: user.username, full_name: user.full_name, role: user.role }));
-  const canEditStudent = session?.role === "admin" || session?.role === "consultant" || session?.role === "employee";
+  const canEditStudent = isPrivilegedRole(session?.role) || session?.role === "consultant" || session?.role === "employee";
+  const canSeeFinance = canAccessFinance(session?.role);
   const paid = student.consultation_upfront_paid + student.consultation_balance_paid;
   const initials = student.full_name
     .split(" ")
@@ -111,7 +112,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     { label: "Timeline", href: `/students/${student.id}/timeline`, icon: Timer },
     { label: "Email", href: `/email-center?student=${student.id}`, icon: Mail },
     { label: "Documents", href: `/documents?student=${student.id}`, icon: FileText },
-    { label: "Payments", href: `/payments?student=${student.id}`, icon: Receipt },
+    ...(canSeeFinance ? [{ label: "Payments", href: `/payments?student=${student.id}`, icon: Receipt }] : []),
     { label: "Consultation", href: `/consultations?student=${student.id}`, icon: CalendarPlus }
   ];
 
@@ -140,7 +141,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[560px]">
             <Stat label="Stage" value={stageLabels[student.stage]} />
-            <Stat label="Paid" value={formatCurrency(paid)} />
+            {canSeeFinance ? <Stat label="Paid" value={formatCurrency(paid)} /> : null}
             <Stat label="Docs" value={`${studentDocuments.length}`} />
             <Stat label="Notes" value={`${notes.length}`} />
           </div>
@@ -179,7 +180,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           <details className="rounded-lg border border-[#eadacc] bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#182638]">
             <summary className="cursor-pointer text-sm font-semibold text-[#213343] dark:text-white">Edit full student profile</summary>
             <div className="mt-5">
-              <StudentEditor initial={student} readOnly={!canEditStudent} compact />
+              <StudentEditor initial={student} readOnly={!canEditStudent} compact canSeeFinance={canSeeFinance} />
             </div>
           </details>
         </main>
@@ -207,7 +208,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             <div className="grid grid-cols-3 gap-2 text-center">
               <MiniStat label="Consult" value={`${studentConsultations.length}`} />
               <MiniStat label="Docs" value={`${studentDocuments.length}`} />
-              <MiniStat label="Pay" value={`${studentPayments.length}`} />
+              {canSeeFinance ? <MiniStat label="Pay" value={`${studentPayments.length}`} /> : null}
             </div>
           </Card>
 
