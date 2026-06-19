@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { deleteStudent, updateStudent } from "@/lib/data";
+import { stageOptions } from "@/lib/constants";
 
 const schema = z.object({
   full_name: z.string().min(2).optional(),
@@ -11,10 +12,11 @@ const schema = z.object({
   country_interest: z.string().optional().nullable(),
   program_level: z.string().optional().nullable(),
   university_name: z.string().optional().nullable(),
-  stage: z.enum(["lead", "inquiry", "consultation", "application", "visa", "enrolled", "placed", "employment", "lost"]).optional(),
+  stage: z.enum(stageOptions).optional(),
   consultation_requested: z.boolean().optional(),
   consultation_status: z.enum(["pending", "confirmed", "completed", "cancelled"]).optional().nullable(),
   consultation_date: z.string().optional().nullable(),
+  assigned_consultant_id: z.string().optional().nullable(),
   ielts_enrolled: z.boolean().optional(),
   ielts_amount: z.number().optional().nullable(),
   ielts_payment_status: z.enum(["paid", "unpaid"]).optional().nullable(),

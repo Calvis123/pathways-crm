@@ -1,4 +1,11 @@
+import dns from "node:dns";
 import { createClient } from "@supabase/supabase-js";
+
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  // Older runtimes may not support overriding DNS result order.
+}
 
 export function hasSupabaseEnv() {
   return Boolean(

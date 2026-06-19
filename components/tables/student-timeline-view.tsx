@@ -5,10 +5,16 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 
 const progressByStage: Record<Student["stage"], number> = {
   lead: 5,
+  qualified: 10,
   inquiry: 10,
+  engaged: 20,
   consultation: 25,
+  application_ready: 40,
   application: 50,
+  submitted: 60,
+  offer_secured: 70,
   visa: 80,
+  visa_lodged: 85,
   enrolled: 90,
   placed: 100,
   employment: 100,

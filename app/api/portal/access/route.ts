@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generatePortalAccess } from "@/lib/data";
+import { provisionStudentPortalAccess } from "@/lib/data";
 
 const schema = z.object({
   student_id: z.string().min(1)
@@ -9,9 +9,10 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     const payload = schema.parse(await request.json());
-    const access = await generatePortalAccess(payload.student_id);
+    const { access, delivery } = await provisionStudentPortalAccess(payload.student_id, "manual");
     return NextResponse.json({
       access,
+      delivery,
       link: `/student-portal?token=${encodeURIComponent(access.access_token)}`
     });
   } catch (error) {

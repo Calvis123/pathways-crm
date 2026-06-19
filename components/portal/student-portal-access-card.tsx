@@ -36,12 +36,14 @@ export function StudentPortalAccessCard({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(invalidToken ? "This portal link is invalid or expired." : null);
-  const [loginForm, setLoginForm] = useState({ email: "", phone: "" });
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const formRef = useRef<HTMLFormElement | null>(null);
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setNotice(null);
 
     startTransition(async () => {
       const response = await fetch("/api/portal/session/login", {
@@ -59,6 +61,30 @@ export function StudentPortalAccessCard({
     });
   }
 
+  async function handleForgotPassword() {
+    setError(null);
+    setNotice(null);
+
+    if (!loginForm.email.trim()) {
+      setError("Enter your registered email address first.");
+      return;
+    }
+
+    startTransition(async () => {
+      const response = await fetch("/api/portal/password/forgot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginForm.email })
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+      if (!response.ok) {
+        setError(body?.error ?? "Could not reset password.");
+        return;
+      }
+      setNotice(body?.message ?? "If this email is registered, a new temporary password has been sent.");
+    });
+  }
+
   return (
     <div className={compact ? "w-full" : "relative mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 py-10 lg:px-8"}>
       <div className={compact ? "w-full rounded-xl border border-[#e9d8c8] bg-[linear-gradient(180deg,#fffdf9_0%,#fff6ef_100%)] p-5 shadow-[0_30px_80px_rgba(33,51,67,0.14)] backdrop-blur dark:border-[#24344d] dark:bg-[linear-gradient(180deg,#111b2d_0%,#0d1627_100%)] dark:shadow-[0_30px_80px_rgba(2,6,23,0.36)] sm:p-6" : "w-full rounded-[2.25rem] border border-[#e9d8c8] bg-white/92 p-6 shadow-[0_30px_80px_rgba(33,51,67,0.14)] backdrop-blur dark:border-white/10 dark:bg-[#111c30]/92 dark:shadow-[0_30px_80px_rgba(2,6,23,0.32)] sm:p-8"}>
@@ -73,7 +99,7 @@ export function StudentPortalAccessCard({
                 Sign in to continue
               </h1>
               <p className="mt-2 text-sm leading-6 text-[#5b6f86] dark:text-[#c9d5e3]">
-                Use your student email and phone number to open your Barak Pathways portal.
+                Use your student email and portal password to open your Barak Pathways portal.
               </p>
             </div>
             <ThemeToggle className="border-[#ead5c4] bg-white/90 text-[#213343] shadow-[0_10px_26px_rgba(33,51,67,0.06)] dark:border-[#31415b] dark:bg-[linear-gradient(180deg,#202d43_0%,#182438_100%)] dark:text-white dark:shadow-[0_14px_28px_rgba(2,6,23,0.2)]" />
@@ -127,11 +153,11 @@ export function StudentPortalAccessCard({
           </div>
           <h2 className={compact ? "mt-5 text-2xl font-semibold text-[#213343] dark:text-[#f8fafc]" : "mt-6 text-3xl font-semibold text-[#213343] dark:text-white"}>Sign in to your portal</h2>
           <p className={compact ? "mt-2 text-sm leading-6 text-[#5b6f86] dark:text-[#c9d5e3]" : "mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300"}>
-            Use the same email and phone number shared with Barak Pathways so we can open your student record
-            securely.
+            Use your registered email and the password sent by Barak Pathways.
           </p>
 
           {error ? <p className="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-500/12 dark:text-rose-200">{error}</p> : null}
+          {notice ? <p className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-200">{notice}</p> : null}
 
           <form ref={formRef} className={compact ? "mt-5 space-y-3.5" : "mt-6 space-y-4"} onSubmit={handleLogin}>
             <label className="block text-sm text-[#5b6f86] dark:text-[#c9d5e3]">
@@ -145,12 +171,12 @@ export function StudentPortalAccessCard({
               />
             </label>
             <label className="block text-sm text-[#5b6f86] dark:text-[#c9d5e3]">
-              <span className="mb-2 block font-medium text-[#213343] dark:text-[#f8fafc]">Phone Number</span>
+              <span className="mb-2 block font-medium text-[#213343] dark:text-[#f8fafc]">Password</span>
               <input
-                type="tel"
+                type="password"
                 className="w-full rounded-2xl border border-[#e4d3c4] bg-[#fffaf6] px-4 py-3 text-[#213343] outline-none ring-[#ff7a59]/25 transition focus:border-[#ffb089] focus:bg-white focus:ring-2 dark:border-white/10 dark:bg-[#162236] dark:text-white dark:focus:bg-[#1a2740]"
-                value={loginForm.phone}
-                onChange={(event) => setLoginForm((current) => ({ ...current, phone: event.target.value }))}
+                value={loginForm.password}
+                onChange={(event) => setLoginForm((current) => ({ ...current, password: event.target.value }))}
                 required
               />
             </label>
@@ -160,6 +186,13 @@ export function StudentPortalAccessCard({
             >
               Open Student Portal
               <ArrowRight className="ml-2 h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="w-full text-center text-sm font-semibold text-[#c9692c] hover:underline dark:text-[#ffc3b0]"
+              onClick={handleForgotPassword}
+            >
+              Forgot password?
             </button>
           </form>
 

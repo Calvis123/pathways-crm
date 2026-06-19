@@ -1,19 +1,30 @@
 import type {
   AppUserRecord,
   AuditLog,
+  ApplicationRecord,
   CommissionRecord,
+  ConsultantTraining,
   Consultation,
   DocumentRecord,
   EmailTemplate,
   ExpenseRecord,
+  MarketConfig,
   PaymentRecord,
+  Partner,
+  PartnerAgreement,
+  PlacementRecord,
   PortalAccessRecord,
   PortalActivity,
   PortalMessage,
+  Programme,
+  QaCheckpoint,
   ReferralRecord,
+  RevenueRecord,
   Student,
+  StudentProfile,
   StudentNote,
-  Task
+  Task,
+  VisaRecord
 } from "@/lib/types";
 
 export const mockStudents: Student[] = [
@@ -31,6 +42,13 @@ export const mockStudents: Student[] = [
     consultation_requested: true,
     consultation_status: "confirmed",
     consultation_date: "2026-04-05T09:00:00.000Z",
+    next_action_date: "2026-04-06",
+    advisory_agreement_signed: true,
+    deposit_paid: 20000,
+    application_reference: "LEEDS-FAITH-2026",
+    offer_letter_received: false,
+    testimonial_requested: false,
+    referral_requested: false,
     visa_status: null,
     ielts_enrolled: true,
     payment_status: "installment",
@@ -74,6 +92,13 @@ export const mockStudents: Student[] = [
     consultation_requested: true,
     consultation_status: "pending",
     consultation_date: "2026-04-03T14:00:00.000Z",
+    next_action_date: null,
+    advisory_agreement_signed: false,
+    deposit_paid: 0,
+    application_reference: null,
+    offer_letter_received: false,
+    testimonial_requested: false,
+    referral_requested: false,
     visa_status: null,
     ielts_enrolled: false,
     payment_status: "pending",
@@ -117,6 +142,13 @@ export const mockStudents: Student[] = [
     consultation_requested: true,
     consultation_status: "completed",
     consultation_date: "2026-03-20T11:30:00.000Z",
+    next_action_date: "2026-03-23",
+    advisory_agreement_signed: true,
+    deposit_paid: 40000,
+    application_reference: "MONASH-ANN-2026",
+    offer_letter_received: true,
+    testimonial_requested: true,
+    referral_requested: true,
     visa_status: "approved",
     ielts_enrolled: false,
     payment_status: "full",
@@ -160,6 +192,13 @@ export const mockStudents: Student[] = [
     consultation_requested: true,
     consultation_status: "completed",
     consultation_date: "2025-02-10T10:00:00.000Z",
+    next_action_date: null,
+    advisory_agreement_signed: true,
+    deposit_paid: 40000,
+    application_reference: "DERBY-KEVIN-2025",
+    offer_letter_received: true,
+    testimonial_requested: false,
+    referral_requested: false,
     visa_status: "approved",
     ielts_enrolled: false,
     payment_status: "full",
@@ -223,6 +262,482 @@ export const mockConsultations: Consultation[] = [
       country_interest: mockStudents[0].country_interest,
       stage: mockStudents[0].stage
     }
+  }
+];
+
+export const mockStudentProfiles: StudentProfile[] = [
+  {
+    id: "f8a3e0a4-2282-4d70-9d61-538c89317e21",
+    student_id: mockStudents[0].id,
+    budget_range: "high",
+    career_goal: "research",
+    academic_history: "BSc second class upper, research-oriented masters target.",
+    preferred_destinations: ["United Kingdom", "Canada"],
+    language_proficiency: "IELTS 7.0",
+    intake_script_data: {
+      personal_details_complete: true,
+      academic_history_complete: true,
+      career_aspiration: "Research career in public health",
+      budget_confirmed: true
+    },
+    created_at: "2026-03-28T08:40:00.000Z",
+    updated_at: "2026-04-01T10:30:00.000Z",
+    student: {
+      full_name: mockStudents[0].full_name,
+      stage: mockStudents[0].stage,
+      country_interest: mockStudents[0].country_interest
+    }
+  },
+  {
+    id: "4edca12f-3e27-45f4-bb7e-43f99344b90a",
+    student_id: mockStudents[1].id,
+    budget_range: "low",
+    career_goal: "flexible",
+    academic_history: "Diploma applicant seeking affordable route.",
+    preferred_destinations: ["Canada", "Kenya"],
+    language_proficiency: "Pending IELTS",
+    intake_script_data: {
+      personal_details_complete: true,
+      academic_history_complete: true,
+      career_aspiration: "Flexible digital skills pathway",
+      budget_confirmed: false
+    },
+    created_at: "2026-04-01T11:10:00.000Z",
+    updated_at: "2026-04-02T08:15:00.000Z",
+    student: {
+      full_name: mockStudents[1].full_name,
+      stage: mockStudents[1].stage,
+      country_interest: mockStudents[1].country_interest
+    }
+  },
+  {
+    id: "3dfb06fd-9a9f-4706-a4c5-72c50b6c4242",
+    student_id: mockStudents[2].id,
+    budget_range: "medium",
+    career_goal: "academic",
+    academic_history: "Undergraduate placement confirmed.",
+    preferred_destinations: ["Australia"],
+    language_proficiency: "Exempt",
+    intake_script_data: {
+      personal_details_complete: true,
+      academic_history_complete: true,
+      career_aspiration: "Academic progression",
+      budget_confirmed: true
+    },
+    created_at: "2026-02-15T09:10:00.000Z",
+    updated_at: "2026-03-30T15:00:00.000Z",
+    student: {
+      full_name: mockStudents[2].full_name,
+      stage: mockStudents[2].stage,
+      country_interest: mockStudents[2].country_interest
+    }
+  }
+];
+
+export const mockPartners: Partner[] = [
+  {
+    id: "b3d4f0df-82bb-4f3d-adb3-9f71631cd901",
+    name: "University of Leeds",
+    type: "university",
+    country: "United Kingdom",
+    agreement_status: "active",
+    primary_contact_name: "Sarah Thompson",
+    primary_contact_email: "partners@leeds.example",
+    response_time_hours: 32,
+    satisfaction_score: 8.4,
+    created_at: "2026-01-05T08:00:00.000Z",
+    updated_at: "2026-04-01T08:00:00.000Z"
+  },
+  {
+    id: "44d22a34-dfa5-4af6-a062-538f6474a551",
+    name: "SkillBridge Africa",
+    type: "digital_skills_platform",
+    country: "Kenya",
+    agreement_status: "signed",
+    primary_contact_name: "Njeri Kamau",
+    primary_contact_email: "growth@skillbridge.example",
+    response_time_hours: 18,
+    satisfaction_score: 8.9,
+    created_at: "2026-02-01T08:00:00.000Z",
+    updated_at: "2026-04-01T08:00:00.000Z"
+  },
+  {
+    id: "db431df7-2c9d-48e7-91bb-08a3f3bdbe57",
+    name: "Global Talent Employers",
+    type: "employer",
+    country: "Canada",
+    agreement_status: "legal_review",
+    primary_contact_name: "Michael Reed",
+    primary_contact_email: "hiring@globaltalent.example",
+    response_time_hours: 54,
+    satisfaction_score: 7.1,
+    created_at: "2026-03-01T08:00:00.000Z",
+    updated_at: "2026-04-01T08:00:00.000Z"
+  }
+];
+
+export const mockPartnerAgreements: PartnerAgreement[] = [
+  {
+    id: "b24767eb-26a8-4c20-9321-f3bc036c29b0",
+    partner_id: mockPartners[0].id,
+    agreement_type: "commission",
+    status: "active",
+    legal_review_complete: true,
+    commission_rate: 12,
+    retainer_amount: null,
+    bonus_criteria: { volume_threshold: 20, conversion_target: 65 },
+    fee_structure: { programme_level: "masters", commission_rate: 12, currency: "KES" },
+    onboarding_checklist: [
+      { label: "Signed agreement uploaded", done: true },
+      { label: "Admissions contact confirmed", done: true },
+      { label: "Commission schedule verified", done: true }
+    ],
+    signed_at: "2026-01-15T10:00:00.000Z",
+    renewal_date: "2026-12-31",
+    created_at: "2026-01-05T08:00:00.000Z",
+    partner: { name: mockPartners[0].name, type: mockPartners[0].type, country: mockPartners[0].country }
+  },
+  {
+    id: "19f2835d-b8b6-4dc0-b4cf-06121581e925",
+    partner_id: mockPartners[1].id,
+    agreement_type: "retainer",
+    status: "signed",
+    legal_review_complete: true,
+    commission_rate: null,
+    retainer_amount: 90000,
+    bonus_criteria: { retention_target: 80 },
+    fee_structure: { monthly_retainer: 90000, deliverables: ["referrals", "coaching reports"] },
+    onboarding_checklist: [
+      { label: "Curriculum mapped", done: true },
+      { label: "Portal documents received", done: false }
+    ],
+    signed_at: "2026-03-10T10:00:00.000Z",
+    renewal_date: "2026-09-10",
+    created_at: "2026-02-01T08:00:00.000Z",
+    partner: { name: mockPartners[1].name, type: mockPartners[1].type, country: mockPartners[1].country }
+  },
+  {
+    id: "b82ed90c-eec6-49bd-9c0f-5945507dab99",
+    partner_id: mockPartners[2].id,
+    agreement_type: "bonus",
+    status: "legal_review",
+    legal_review_complete: false,
+    commission_rate: 8,
+    retainer_amount: null,
+    bonus_criteria: { placement_volume: 10, retention_target: 80 },
+    fee_structure: { bonus_per_placement: 30000, currency: "KES" },
+    onboarding_checklist: [
+      { label: "Legal review", done: false },
+      { label: "Employer intake complete", done: false }
+    ],
+    signed_at: null,
+    renewal_date: null,
+    created_at: "2026-03-01T08:00:00.000Z",
+    partner: { name: mockPartners[2].name, type: mockPartners[2].type, country: mockPartners[2].country }
+  }
+];
+
+export const mockProgrammes: Programme[] = [
+  {
+    id: "273d6a5a-f355-4cb7-aa52-81ff275d7932",
+    partner_id: mockPartners[0].id,
+    name: "MSc International Business",
+    destination: "United Kingdom",
+    level: "masters",
+    tuition_fee: 1650000,
+    currency: "KES",
+    eligibility_criteria: { min_gpa: "second class upper", english: "IELTS 6.5" },
+    active: true,
+    created_at: "2026-01-20T08:00:00.000Z",
+    partner: { name: mockPartners[0].name, type: mockPartners[0].type }
+  },
+  {
+    id: "37037d42-a932-4d8c-a6ee-7f164187a5da",
+    partner_id: mockPartners[1].id,
+    name: "Cloud Support Certification",
+    destination: "Kenya",
+    level: "certificate",
+    tuition_fee: 85000,
+    currency: "KES",
+    eligibility_criteria: { mode: "online", duration_weeks: 16 },
+    active: true,
+    created_at: "2026-02-05T08:00:00.000Z",
+    partner: { name: mockPartners[1].name, type: mockPartners[1].type }
+  }
+];
+
+export const mockApplications: ApplicationRecord[] = [
+  {
+    id: "ee4e4897-fdc7-4647-bb34-37eb29bb533a",
+    student_id: mockStudents[0].id,
+    programme_id: mockProgrammes[0].id,
+    status: "submitted",
+    offer_letter_url: null,
+    submitted_at: "2026-04-01T09:00:00.000Z",
+    accepted_at: null,
+    created_at: "2026-03-31T09:00:00.000Z",
+    student: { full_name: mockStudents[0].full_name, stage: mockStudents[0].stage },
+    programme: { name: mockProgrammes[0].name, destination: mockProgrammes[0].destination, tuition_fee: mockProgrammes[0].tuition_fee }
+  },
+  {
+    id: "b93a02a8-351a-4030-9c32-f85949683426",
+    student_id: mockStudents[2].id,
+    programme_id: mockProgrammes[0].id,
+    status: "accepted",
+    offer_letter_url: "/documents/ann-offer-letter.pdf",
+    submitted_at: "2026-02-20T09:00:00.000Z",
+    accepted_at: "2026-03-10T09:00:00.000Z",
+    created_at: "2026-02-18T09:00:00.000Z",
+    student: { full_name: mockStudents[2].full_name, stage: mockStudents[2].stage },
+    programme: { name: mockProgrammes[0].name, destination: mockProgrammes[0].destination, tuition_fee: mockProgrammes[0].tuition_fee }
+  }
+];
+
+export const mockMarketConfigs: MarketConfig[] = [
+  {
+    id: "52ce5d4f-6571-4b24-a1a2-1d18a13082be",
+    country: "United Kingdom",
+    language: "en",
+    active: true,
+    visa_requirements: [
+      { label: "Valid passport", timeline: "Before CAS", fee: "0" },
+      { label: "CAS letter", timeline: "After offer acceptance" },
+      { label: "Bank statement", timeline: "28 days maturity" },
+      { label: "TB certificate", timeline: "Before submission" }
+    ],
+    policy_notes: "Student route checklist requires current financial proof and CAS validation.",
+    market_owner: "operations",
+    official_sources: [
+      {
+        label: "UK student visa guidance",
+        url: "https://www.gov.uk/student-visa",
+        last_checked: "2026-06-18"
+      }
+    ],
+    last_verified_at: "2026-06-18",
+    fee_configuration: { visa_fee: 715, currency: "GBP" },
+    created_at: "2026-01-01T08:00:00.000Z",
+    updated_at: "2026-04-01T08:00:00.000Z"
+  },
+  {
+    id: "d00d75f4-6337-4d44-9d81-2ef05a8e9d1e",
+    country: "Kenya",
+    language: "en",
+    active: true,
+    visa_requirements: [
+      { label: "National ID or passport" },
+      { label: "Training admission confirmation" },
+      { label: "Payment confirmation" }
+    ],
+    policy_notes: "Local certification path uses identity, admission, and payment verification only.",
+    market_owner: "operations",
+    official_sources: [
+      {
+        label: "Kenya eCitizen services",
+        url: "https://www.ecitizen.go.ke/",
+        last_checked: "2026-06-18"
+      }
+    ],
+    last_verified_at: "2026-06-18",
+    fee_configuration: { registration_fee: 5000, currency: "KES" },
+    created_at: "2026-01-01T08:00:00.000Z",
+    updated_at: "2026-04-01T08:00:00.000Z"
+  }
+];
+
+export const mockVisaRecords: VisaRecord[] = [
+  {
+    id: "8ef8cfbb-8dcb-4331-b431-c7fcb97d2fa2",
+    student_id: mockStudents[2].id,
+    destination_country: "Australia",
+    status: "approved",
+    checklist_data: [
+      { label: "Passport", done: true },
+      { label: "Offer letter", done: true },
+      { label: "Financial proof", done: true }
+    ],
+    embassy_location: "Nairobi",
+    appointment_at: "2026-03-16T08:00:00.000Z",
+    submitted_at: "2026-03-16T08:00:00.000Z",
+    approved_at: "2026-03-22T08:00:00.000Z",
+    created_at: "2026-03-12T08:00:00.000Z",
+    student: { full_name: mockStudents[2].full_name, stage: mockStudents[2].stage }
+  }
+];
+
+export const mockPlacements: PlacementRecord[] = [
+  {
+    id: "1e8c88b0-e590-4dab-b9dc-a6b5dd1f9ec7",
+    student_id: mockStudents[2].id,
+    programme_id: mockProgrammes[0].id,
+    partner_id: mockPartners[0].id,
+    type: "admission",
+    institution: "Monash University",
+    role_title: null,
+    salary_range: null,
+    satisfaction_score: 8.2,
+    placed_at: "2026-03-22",
+    created_at: "2026-03-22T08:00:00.000Z",
+    student: { full_name: mockStudents[2].full_name, stage: mockStudents[2].stage },
+    partner: { name: mockPartners[0].name, type: mockPartners[0].type }
+  }
+];
+
+export const mockRevenueRecords: RevenueRecord[] = [
+  {
+    id: "e0f7909d-09f0-4c9e-8830-1d5665ed1a7d",
+    student_id: mockStudents[2].id,
+    partner_id: mockPartners[0].id,
+    type: "commission",
+    amount: 140000,
+    currency: "KES",
+    recognized_at: "2026-03-22",
+    notes: "Admission placement commission triggered.",
+    created_at: "2026-03-22T08:10:00.000Z",
+    partner: { name: mockPartners[0].name, type: mockPartners[0].type }
+  },
+  {
+    id: "e552b704-a4e8-4e76-9567-173b68b52bed",
+    student_id: null,
+    partner_id: mockPartners[1].id,
+    type: "retainer",
+    amount: 90000,
+    currency: "KES",
+    recognized_at: "2026-04-01",
+    notes: "Monthly partner retainer.",
+    created_at: "2026-04-01T08:10:00.000Z",
+    partner: { name: mockPartners[1].name, type: mockPartners[1].type }
+  },
+  {
+    id: "6a7eb49b-9e50-46c6-bb6d-f38687e370a7",
+    student_id: null,
+    partner_id: mockPartners[1].id,
+    type: "royalty",
+    amount: 35000,
+    currency: "KES",
+    recognized_at: "2026-04-01",
+    notes: "Recurring white-label platform royalty.",
+    created_at: "2026-04-01T08:20:00.000Z",
+    partner: { name: mockPartners[1].name, type: mockPartners[1].type }
+  }
+];
+
+export const mockQaCheckpoints: QaCheckpoint[] = [
+  {
+    id: "09fce5cf-0ca4-4fea-954d-b5a60876a10b",
+    entity_type: "student",
+    entity_id: mockStudents[0].id,
+    stage: "intake",
+    label: "Profile complete",
+    passed: true,
+    checklist_data: { source: "intake_script_data" },
+    signed_off_by: "admin",
+    signed_off_at: "2026-03-29T08:00:00.000Z",
+    created_at: "2026-03-29T08:00:00.000Z"
+  },
+  {
+    id: "4e595a1b-7921-42fb-b538-94fd189b772f",
+    entity_type: "student",
+    entity_id: mockStudents[1].id,
+    stage: "counselling",
+    label: "Budget confirmed",
+    passed: false,
+    checklist_data: { missing: "budget_range confirmation" },
+    signed_off_by: null,
+    signed_off_at: null,
+    created_at: "2026-04-02T08:00:00.000Z"
+  },
+  {
+    id: "a006d4f2-33f6-47c7-a516-3fac784b777f",
+    entity_type: "partner_agreement",
+    entity_id: mockPartnerAgreements[2].id,
+    stage: "partner_agreement",
+    label: "Legal review complete",
+    passed: false,
+    checklist_data: { legal_review_complete: false },
+    signed_off_by: null,
+    signed_off_at: null,
+    created_at: "2026-03-05T08:00:00.000Z"
+  }
+];
+
+export const mockConsultantTraining: ConsultantTraining[] = [
+  {
+    id: "a15afd35-a31a-4325-9653-d1d77c37d71c",
+    consultant_username: "admin",
+    module_name: "Module 1 - The pathways business and ethics",
+    module_type: "onboarding",
+    completed: true,
+    score: 92,
+    certified_at: "2026-03-01",
+    expires_at: "2027-03-01",
+    created_at: "2026-02-20T08:00:00.000Z"
+  },
+  {
+    id: "31d88955-b7ec-404d-9d32-aa08a787cdbb",
+    consultant_username: "admin",
+    module_name: "Module 2 - The seven gates and CRM",
+    module_type: "onboarding",
+    completed: true,
+    score: 90,
+    certified_at: "2026-03-02",
+    expires_at: "2027-03-02",
+    created_at: "2026-02-21T08:00:00.000Z"
+  },
+  {
+    id: "d931e14c-9af3-4ddb-84d2-15f2fd72c611",
+    consultant_username: "admin",
+    module_name: "Module 3 - Intake and counselling",
+    module_type: "certification",
+    completed: true,
+    score: 88,
+    certified_at: "2026-03-03",
+    expires_at: "2027-03-03",
+    created_at: "2026-02-22T08:00:00.000Z"
+  },
+  {
+    id: "e8e7e54f-4cf9-4e98-aa2a-a85ae5a826aa",
+    consultant_username: "admin",
+    module_name: "Module 4 - Applications and documents",
+    module_type: "certification",
+    completed: true,
+    score: 91,
+    certified_at: "2026-03-04",
+    expires_at: "2027-03-04",
+    created_at: "2026-02-23T08:00:00.000Z"
+  },
+  {
+    id: "fa529a75-202d-4a13-8895-4b9182485a21",
+    consultant_username: "admin",
+    module_name: "Module 5 - Visa support and honesty rule",
+    module_type: "certification",
+    completed: true,
+    score: 94,
+    certified_at: "2026-03-05",
+    expires_at: "2027-03-05",
+    created_at: "2026-02-24T08:00:00.000Z"
+  },
+  {
+    id: "2d3fbfb4-0d03-4ee8-af89-e8442fbcb793",
+    consultant_username: "consultant",
+    module_name: "Module 6 - Partners and revenue basics",
+    module_type: "skill_development",
+    completed: false,
+    score: null,
+    certified_at: null,
+    expires_at: null,
+    created_at: "2026-03-20T08:00:00.000Z"
+  },
+  {
+    id: "60e212fa-18ce-4fb4-9d0e-3e50aa3bb14f",
+    consultant_username: "consultant",
+    module_name: "Module 7 - Tools, dashboard, and prompt library",
+    module_type: "skill_development",
+    completed: false,
+    score: null,
+    certified_at: null,
+    expires_at: null,
+    created_at: "2026-03-21T08:00:00.000Z"
   }
 ];
 
@@ -393,6 +908,10 @@ export const mockPortalAccess: PortalAccessRecord[] = [
     student_id: mockStudents[0].id,
     access_token: "portal-faith-demo-token",
     token_expires_at: "2026-05-01T00:00:00.000Z",
+    password_hash: null,
+    must_change_password: true,
+    password_reset_token: null,
+    password_reset_expires_at: null,
     is_active: true,
     last_login_at: "2026-04-01T17:00:00.000Z",
     created_at: "2026-03-29T12:00:00.000Z",

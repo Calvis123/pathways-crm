@@ -6,7 +6,7 @@ import { getStudents, getTasks, getUsers } from "@/lib/data";
 import type { AppRole } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
-const roleOrder: AppRole[] = ["admin", "hr", "employee", "operations", "consultant", "marketing", "ielts_trainer"];
+const roleOrder: AppRole[] = ["admin", "hr", "employee", "operations", "consultant", "marketing", "ielts_trainer", "partner"];
 
 export default async function HrTeamPage() {
   const [users, students, tasks] = await Promise.all([getUsers(), getStudents(), getTasks()]);

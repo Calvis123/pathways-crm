@@ -12,7 +12,8 @@ const roleLabels: Record<AppUserRecord["role"], string> = {
   operations: "Operations",
   marketing: "Marketing",
   consultant: "Consultant",
-  ielts_trainer: "IELTS Trainer"
+  ielts_trainer: "IELTS Trainer",
+  partner: "Partner"
 };
 
 const roleDescriptions: Record<AppUserRecord["role"], string> = {
@@ -22,7 +23,8 @@ const roleDescriptions: Record<AppUserRecord["role"], string> = {
   operations: "Documents and process",
   marketing: "Leads and campaigns",
   consultant: "Student support",
-  ielts_trainer: "IELTS only"
+  ielts_trainer: "IELTS only",
+  partner: "Read-only partner dashboard"
 };
 
 const roleBadgeTone: Record<AppUserRecord["role"], string> = {
@@ -32,7 +34,8 @@ const roleBadgeTone: Record<AppUserRecord["role"], string> = {
   operations: "bg-emerald-500 text-white",
   marketing: "bg-amber-500 text-white",
   consultant: "bg-violet-500 text-white",
-  ielts_trainer: "bg-rose-500 text-white"
+  ielts_trainer: "bg-rose-500 text-white",
+  partner: "bg-slate-700 text-white"
 };
 
 const allRoles: AppUserRecord["role"][] = [
@@ -42,7 +45,8 @@ const allRoles: AppUserRecord["role"][] = [
   "operations",
   "marketing",
   "consultant",
-  "ielts_trainer"
+  "ielts_trainer",
+  "partner"
 ];
 
 const ITEMS_PER_PAGE = 10;
@@ -434,6 +438,7 @@ function RoleField() {
         <option value="marketing">Marketing</option>
         <option value="consultant">Consultant</option>
         <option value="ielts_trainer">IELTS Trainer</option>
+        <option value="partner">Partner</option>
       </select>
       <span className="mt-2 block text-xs text-slate-500 dark:text-slate-400">
         Super Admin: Full control | Admin: Finance & Admin | Operations: Documents | Marketing: Leads

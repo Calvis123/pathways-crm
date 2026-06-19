@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runStudentBulkAction } from "@/lib/data";
+import { stageOptions } from "@/lib/constants";
 
 const schema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("update_stage"),
     studentIds: z.array(z.string().uuid()).min(1),
-    stage: z.enum([
-      "lead",
-      "inquiry",
-      "consultation",
-      "application",
-      "visa",
-      "enrolled",
-      "placed",
-      "employment",
-      "lost"
-    ])
+    stage: z.enum(stageOptions)
   }),
   z.object({
     action: z.literal("update_payment"),

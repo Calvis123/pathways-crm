@@ -4,20 +4,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, CreditCard, GraduationCap, Save, Trash2, UserRound } from "lucide-react";
-import { stageLabels } from "@/lib/constants";
+import { stageLabels, stageOrder } from "@/lib/constants";
 import { readJsonBody } from "@/lib/http";
 import type { Student, StudentStage } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const stages: StudentStage[] = ["lead", "inquiry", "consultation", "application", "visa", "enrolled", "placed", "employment", "lost"];
+const stages: StudentStage[] = [...stageOrder];
 
 export function StudentEditor({
   initial,
-  readOnly = false
+  readOnly = false,
+  compact = false
 }: {
   initial?: Student | null;
   readOnly?: boolean;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState("");
@@ -130,43 +132,45 @@ export function StudentEditor({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <section className="overflow-hidden rounded-xl border border-[#eadacc] bg-white shadow-[0_18px_50px_rgba(120,75,42,0.1)] dark:border-white/10 dark:bg-[#182638]">
-        <div className="grid gap-5 bg-[linear-gradient(135deg,#fffaf5_0%,#fff1e6_58%,#ffe0c8_100%)] px-5 py-6 lg:grid-cols-[1fr_320px] lg:px-7">
-          <div>
-            <Link href="/students" className="inline-flex items-center gap-2 text-sm font-semibold text-[#8b5e3c] underline-offset-4 hover:underline">
-              <ArrowLeft className="h-4 w-4" />
-              Back to students
-            </Link>
-            <h1 className="mt-4 text-3xl font-semibold text-[#213343]">
-              {initial ? "Student Profile" : "Create Student Record"}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#5f7182]">
-              Capture admissions, consultation, payment, IELTS, and follow-up details in one organized profile.
-            </p>
-          </div>
-          <div className="rounded-lg border border-[#eadacc] bg-white/78 p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#31424a,#516672)] text-sm font-semibold text-white">
-                {initials || <UserRound className="h-5 w-5" />}
+      {!compact ? (
+        <section className="overflow-hidden rounded-xl border border-[#eadacc] bg-white shadow-[0_18px_50px_rgba(120,75,42,0.1)] dark:border-white/10 dark:bg-[#182638]">
+          <div className="grid gap-5 bg-[linear-gradient(135deg,#fffaf5_0%,#fff1e6_58%,#ffe0c8_100%)] px-5 py-6 lg:grid-cols-[1fr_320px] lg:px-7">
+            <div>
+              <Link href="/students" className="inline-flex items-center gap-2 text-sm font-semibold text-[#8b5e3c] underline-offset-4 hover:underline">
+                <ArrowLeft className="h-4 w-4" />
+                Back to students
+              </Link>
+              <h1 className="mt-4 text-3xl font-semibold text-[#213343]">
+                {initial ? "Student Profile" : "Create Student Record"}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#5f7182]">
+                Capture admissions, consultation, payment, IELTS, and follow-up details in one organized profile.
+              </p>
+            </div>
+            <div className="rounded-lg border border-[#eadacc] bg-white/78 p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[linear-gradient(135deg,#31424a,#516672)] text-sm font-semibold text-white">
+                  {initials || <UserRound className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-[#213343]">{form.full_name || "Unnamed student"}</p>
+                  <p className="truncate text-sm text-slate-500">{form.email || "Email not set"}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-[#213343]">{form.full_name || "Unnamed student"}</p>
-                <p className="truncate text-sm text-slate-500">{form.email || "Email not set"}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg bg-[#fff6ef] p-3">
+                  <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Stage</p>
+                  <p className="mt-1 font-semibold text-[#213343]">{stageLabels[form.stage as StudentStage]}</p>
+                </div>
+                <div className="rounded-lg bg-[#fff6ef] p-3">
+                  <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Paid</p>
+                  <p className="mt-1 font-semibold text-[#213343]">{formatCurrency(paidTotal)}</p>
+                </div>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg bg-[#fff6ef] p-3">
-                <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Stage</p>
-                <p className="mt-1 font-semibold text-[#213343]">{stageLabels[form.stage as StudentStage]}</p>
-              </div>
-              <div className="rounded-lg bg-[#fff6ef] p-3">
-                <p className="text-xs font-semibold uppercase text-[#8b5e3c]">Paid</p>
-                <p className="mt-1 font-semibold text-[#213343]">{formatCurrency(paidTotal)}</p>
-              </div>
-            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6">
@@ -184,7 +188,7 @@ export function StudentEditor({
               <label className={labelClass}><span className={labelTextClass}>Phone</span><input disabled={readOnly} value={form.phone} onChange={(e) => update("phone", e.target.value)} onBlur={checkDuplicates} className={fieldClass} /></label>
               <label className={labelClass}><span className={labelTextClass}>Passport number</span><input disabled={readOnly} value={form.passport_number} onChange={(e) => update("passport_number", e.target.value)} onBlur={checkDuplicates} className={fieldClass} /></label>
               <label className={labelClass}><span className={labelTextClass}>Location</span><input disabled={readOnly} value={form.location} onChange={(e) => update("location", e.target.value)} className={fieldClass} /></label>
-              <label className={labelClass}><span className={labelTextClass}>Lead source</span><input disabled={readOnly} value={form.lead_source} onChange={(e) => update("lead_source", e.target.value)} className={fieldClass} /></label>
+              <label className={labelClass}><span className={labelTextClass}>Registration source</span><input disabled={readOnly} value={form.lead_source} onChange={(e) => update("lead_source", e.target.value)} className={fieldClass} placeholder="Website, referral, walk-in, WhatsApp" /></label>
             </div>
           </section>
 

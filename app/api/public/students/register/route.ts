@@ -1,19 +1,10 @@
 import { z } from "zod";
 import { createPublicStudentRegistration } from "@/lib/data";
+import { stageOptions } from "@/lib/constants";
 import { jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
 import { normalizeKenyanPhone } from "@/lib/utils";
 
-const stageSchema = z.enum([
-  "lead",
-  "inquiry",
-  "consultation",
-  "application",
-  "visa",
-  "enrolled",
-  "placed",
-  "employment",
-  "lost"
-]);
+const stageSchema = z.enum(stageOptions);
 
 const optionalText = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),

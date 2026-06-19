@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createStudent } from "@/lib/data";
+import { stageOptions } from "@/lib/constants";
 
 const schema = z.object({
   full_name: z.string().min(2),
@@ -11,7 +12,7 @@ const schema = z.object({
   country_interest: z.string().optional().nullable(),
   program_level: z.string().optional().nullable(),
   university_name: z.string().optional().nullable(),
-  stage: z.enum(["lead", "inquiry", "consultation", "application", "visa", "enrolled", "placed", "employment", "lost"]).optional(),
+  stage: z.enum(stageOptions).optional(),
   lead_source: z.string().optional().nullable(),
   consultation_requested: z.union([z.literal("true"), z.literal("false"), z.boolean()]).optional(),
   ielts_enrolled: z.boolean().optional(),

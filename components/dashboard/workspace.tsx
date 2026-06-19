@@ -41,12 +41,36 @@ const kanbanStages = [
     soft: "bg-[#fff6ef]"
   },
   {
+    id: "qualified",
+    name: "Qualified",
+    icon: CheckCircle2,
+    color: "bg-slate-100 text-slate-700",
+    accent: "bg-slate-600",
+    soft: "bg-slate-50"
+  },
+  {
+    id: "engaged",
+    name: "Engaged",
+    icon: Target,
+    color: "bg-teal-100 text-teal-700",
+    accent: "bg-teal-600",
+    soft: "bg-teal-50"
+  },
+  {
     id: "consultation",
     name: "Consultation",
     icon: CalendarCheck,
     color: "bg-sky-100 text-sky-700",
     accent: "bg-sky-500",
     soft: "bg-sky-50"
+  },
+  {
+    id: "application_ready",
+    name: "Application Ready",
+    icon: Folder,
+    color: "bg-cyan-100 text-cyan-700",
+    accent: "bg-cyan-600",
+    soft: "bg-cyan-50"
   },
   {
     id: "application",
@@ -57,12 +81,36 @@ const kanbanStages = [
     soft: "bg-blue-50"
   },
   {
+    id: "submitted",
+    name: "Submitted",
+    icon: ArrowUpRight,
+    color: "bg-indigo-100 text-indigo-700",
+    accent: "bg-indigo-600",
+    soft: "bg-indigo-50"
+  },
+  {
+    id: "offer_secured",
+    name: "Offer Secured",
+    icon: Sparkles,
+    color: "bg-violet-100 text-violet-700",
+    accent: "bg-violet-600",
+    soft: "bg-violet-50"
+  },
+  {
     id: "visa",
     name: "Visa",
     icon: Plane,
     color: "bg-amber-100 text-amber-700",
     accent: "bg-amber-500",
     soft: "bg-amber-50"
+  },
+  {
+    id: "visa_lodged",
+    name: "Visa Lodged",
+    icon: Plane,
+    color: "bg-pink-100 text-pink-700",
+    accent: "bg-pink-600",
+    soft: "bg-pink-50"
   },
   {
     id: "placed",

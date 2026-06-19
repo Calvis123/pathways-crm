@@ -25,6 +25,7 @@ import {
   MessageCircleMore,
   Mail,
   Moon,
+  Network,
   PieChart,
   ReceiptText,
   School,
@@ -50,6 +51,8 @@ const sections: Array<{ title: string; items: Item[] }> = [
     title: "Main",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/operating-system", label: "Operating System", icon: Network },
+      { href: "/partner-dashboard", label: "Partner Dashboard", icon: BriefcaseBusiness },
       { href: "/students", label: "Students", icon: Users2 },
       { href: "/sales-funnel", label: "Sales Funnel", icon: Funnel },
       { href: "/consultations", label: "Consultations", icon: CalendarCheck }

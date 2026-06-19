@@ -4,24 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Download, Mail, Search, Trash2, UserPlus, Users2 } from "lucide-react";
-import { stageLabels } from "@/lib/constants";
+import { stageLabels, stageOrder } from "@/lib/constants";
 import { readJsonBody } from "@/lib/http";
 import type { AppRole, Student, StudentStage } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const stageChoices: StudentStage[] = [
-  "lead",
-  "inquiry",
-  "consultation",
-  "application",
-  "visa",
-  "enrolled",
-  "placed",
-  "employment",
-  "lost"
-];
+const stageChoices: StudentStage[] = [...stageOrder];
+type StudentSort = "registered_desc" | "registered_asc" | "source_asc" | "updated_desc";
 
 const STUDENTS_PER_PAGE = 10;
 
@@ -33,6 +24,7 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState<StudentStage | "all">("all");
+  const [sortMode, setSortMode] = useState<StudentSort>("registered_desc");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkStage, setBulkStage] = useState<StudentStage>("consultation");
   const [bulkPayment, setBulkPayment] = useState<"full" | "partial" | "none">("partial");
@@ -42,21 +34,39 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
   const filteredStudents = useMemo(() => {
     const term = query.trim().toLowerCase();
 
-    return students.filter((student) => {
-      const stageMatch = stageFilter === "all" || student.stage === stageFilter;
-      const textMatch =
-        !term ||
-        [student.full_name, student.email, student.phone, student.country_interest, student.stage, student.lead_source]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(term));
+    return students
+      .filter((student) => {
+        const stageMatch = stageFilter === "all" || student.stage === stageFilter;
+        const textMatch =
+          !term ||
+          [
+            student.full_name,
+            student.email,
+            student.phone,
+            student.country_interest,
+            student.stage,
+            student.lead_source,
+            formatDate(student.created_at)
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(term));
 
-      return stageMatch && textMatch;
-    });
-  }, [query, stageFilter, students]);
+        return stageMatch && textMatch;
+      })
+      .sort((a, b) => {
+        if (sortMode === "registered_asc") return a.created_at.localeCompare(b.created_at);
+        if (sortMode === "source_asc") {
+          const sourceComparison = (a.lead_source ?? "").localeCompare(b.lead_source ?? "");
+          return sourceComparison || b.created_at.localeCompare(a.created_at);
+        }
+        if (sortMode === "updated_desc") return b.updated_at.localeCompare(a.updated_at);
+        return b.created_at.localeCompare(a.created_at);
+      });
+  }, [query, sortMode, stageFilter, students]);
 
   useEffect(() => {
     setPage(0);
-  }, [query, stageFilter]);
+  }, [query, sortMode, stageFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
   const safePage = Math.min(page, totalPages - 1);
@@ -214,6 +224,17 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
               className="h-11 w-full rounded-lg border border-[#eadacc] bg-white px-10 text-sm shadow-sm outline-none transition focus:border-[#ff9a77] focus:ring-4 focus:ring-[#ff7a59]/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white dark:placeholder:text-slate-400"
             />
           </div>
+          <select
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value as StudentSort)}
+            className="h-11 rounded-lg border border-[#eadacc] bg-white px-3 text-sm font-semibold text-[#213343] shadow-sm outline-none transition focus:border-[#ff9a77] focus:ring-4 focus:ring-[#ff7a59]/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
+            aria-label="Sort student records"
+          >
+            <option value="registered_desc">Newest registered</option>
+            <option value="registered_asc">Oldest registered</option>
+            <option value="source_asc">Registration source</option>
+            <option value="updated_desc">Recently updated</option>
+          </select>
           {selectedIds.length > 0 ? (
             <Badge className="bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-500/20 dark:text-amber-100 dark:ring-amber-400/30">
               {selectedIds.length} selected
@@ -315,13 +336,14 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
           </div>
         </div>
 
-        <div className="hidden grid-cols-[44px_minmax(260px,1.45fr)_160px_160px_150px_140px] gap-4 border-b border-[#eadacc] bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[#8b5e3c] lg:grid dark:bg-white/[0.03]">
+        <div className="hidden grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_130px_150px_130px] gap-4 border-b border-[#eadacc] bg-white px-5 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-[#8b5e3c] lg:grid dark:bg-white/[0.03]">
           <div />
           <div>Student</div>
           <div>Stage</div>
           <div>Market</div>
           <div>Paid</div>
-          <div>Updated</div>
+          <div>Registered</div>
+          <div>Record</div>
         </div>
 
         <div className="divide-y divide-[#f0dfd0] dark:divide-white/10">
@@ -336,7 +358,7 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
               .toUpperCase();
 
             return (
-              <article key={student.id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#fffaf5] dark:hover:bg-white/[0.04] lg:grid-cols-[44px_minmax(260px,1.45fr)_160px_160px_150px_140px] lg:items-center ${selectedIds.includes(student.id) ? "bg-[#fff1e6]" : ""}`}>
+              <article key={student.id} className={`grid gap-4 px-5 py-4 transition hover:bg-[#fffaf5] dark:hover:bg-white/[0.04] lg:grid-cols-[44px_minmax(250px,1.35fr)_140px_140px_130px_150px_130px] lg:items-center ${selectedIds.includes(student.id) ? "bg-[#fff1e6]" : ""}`}>
                 <div>
                   {manager ? (
                     <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleStudent(student.id)} className="h-4 w-4 rounded border-[#d9c1ad] accent-[#213343]" />
@@ -365,7 +387,19 @@ export function StudentsTable({ students, role }: { students: Student[]; role: A
                   <p className="font-semibold text-[#213343] dark:text-white">{formatCurrency(paid)}</p>
                   <p className="text-xs text-slate-500">{student.consultation_status ?? (student.consultation_requested ? "Requested" : "No consultation")}</p>
                 </div>
-                <div className="text-sm text-slate-500 dark:text-slate-300">{formatDate(student.updated_at)}</div>
+                <div>
+                  <p className="font-semibold text-[#213343] dark:text-white">{formatDate(student.created_at)}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{student.lead_source ?? "Unknown source"}</p>
+                </div>
+                <div>
+                  <Link
+                    href={`/students/${student.id}`}
+                    className="inline-flex items-center justify-center rounded-lg border border-[#eadacc] bg-white px-3 py-2 text-xs font-semibold text-[#213343] shadow-sm transition hover:bg-[#fff1e6] dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1]"
+                  >
+                    Open Record
+                  </Link>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Updated {formatDate(student.updated_at)}</p>
+                </div>
               </article>
             );
           })}

@@ -8,7 +8,7 @@ import { authenticateStudentPortalUser } from "@/lib/data";
 
 const schema = z.object({
   email: z.string().email(),
-  phone: z.string().min(7)
+  password: z.string().min(1)
 });
 
 export async function POST(request: Request) {
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     if (!student) {
       return NextResponse.json(
-        { error: "Invalid credentials. Please check your email and phone number." },
+        { error: "Invalid credentials. Please check your email and password." },
         { status: 401 }
       );
     }
@@ -28,7 +28,8 @@ export async function POST(request: Request) {
       student: {
         id: student.id,
         full_name: student.full_name,
-        email: student.email
+        email: student.email,
+        must_change_password: "must_change_password" in student ? student.must_change_password : false
       }
     });
 

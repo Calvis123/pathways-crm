@@ -22,7 +22,7 @@ export function CrmShell({
   const activePathname = usePathname() ?? pathname;
 
   return (
-    <div className="grid min-h-screen bg-[linear-gradient(180deg,#fffaf5_0%,#fff1e6_48%,#f8ede3_100%)] text-slate-950 transition-colors dark:bg-[#142233] dark:text-slate-50 lg:grid-cols-[292px_1fr]">
+    <div className="grid min-h-screen w-full max-w-full overflow-x-hidden bg-[linear-gradient(180deg,#fffaf5_0%,#fff1e6_48%,#f8ede3_100%)] text-slate-950 transition-colors dark:bg-[#142233] dark:text-slate-50 lg:h-screen lg:overflow-hidden lg:grid-cols-[292px_minmax(0,1fr)]">
       <div className="hidden lg:block">
         <Sidebar pathname={activePathname} user={user} />
       </div>
@@ -71,7 +71,7 @@ export function CrmShell({
         ) : null}
       </div>
 
-      <main className="space-y-5 px-4 py-5 lg:px-6 lg:py-6 2xl:px-8">{children}</main>
+      <main className="min-w-0 max-w-full space-y-5 overflow-x-hidden px-4 py-5 lg:h-screen lg:overflow-y-auto lg:px-6 lg:py-6 2xl:px-8">{children}</main>
     </div>
   );
 }

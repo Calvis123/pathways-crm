@@ -19,10 +19,12 @@ export interface StudentPortalSession {
 const publicExactPaths = new Set(["/", "/login", "/book-consultation", "/ielts-training", "/student-portal"]);
 const publicPrefixes = ["/api/session/", "/api/public/", "/api/portal/", "/_next/", "/favicon.ico"];
 const publicAssetPattern = /\.[a-z0-9]+$/i;
-const allAppRoles: AppRole[] = ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer"];
+const allAppRoles: AppRole[] = ["admin", "hr", "consultant", "marketing", "operations", "employee", "ielts_trainer", "partner"];
 
 const routeAccess: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/dashboard", roles: ["admin", "consultant", "marketing", "operations", "employee", "ielts_trainer"] },
+  { prefix: "/operating-system", roles: ["admin", "hr", "consultant", "operations", "employee"] },
+  { prefix: "/partner-dashboard", roles: ["admin", "operations", "employee", "partner"] },
   { prefix: "/users", roles: ["admin"] },
   { prefix: "/hr-dashboard", roles: ["admin", "hr", "employee"] },
   { prefix: "/payments", roles: ["admin", "consultant", "operations", "employee"] },
@@ -56,6 +58,8 @@ const routeAccess: Array<{ prefix: string; roles: AppRole[] }> = [
 
 export const permissionMatrix = [
   { label: "User Management", prefix: "/users", roles: ["admin"] },
+  { label: "Operating System", prefix: "/operating-system", roles: ["admin", "hr", "consultant", "operations", "employee"] },
+  { label: "Partner Dashboard", prefix: "/partner-dashboard", roles: ["admin", "operations", "employee", "partner"] },
   { label: "HR Dashboard", prefix: "/hr-dashboard", roles: ["admin", "hr", "employee"] },
   { label: "System Monitor", prefix: "/system-monitor", roles: ["admin"] },
   { label: "Reports", prefix: "/reports", roles: ["admin", "hr"] },
@@ -135,6 +139,7 @@ export function getDefaultRouteForRole(role: AppRole) {
   if (role === "marketing") return "/students";
   if (role === "consultant") return "/students";
   if (role === "ielts_trainer") return "/ielts-dashboard";
+  if (role === "partner") return "/partner-dashboard";
   return "/dashboard";
 }
 

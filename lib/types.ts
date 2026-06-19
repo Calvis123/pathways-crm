@@ -5,14 +5,21 @@ export type AppRole =
   | "marketing"
   | "operations"
   | "employee"
-  | "ielts_trainer";
+  | "ielts_trainer"
+  | "partner";
 
 export type StudentStage =
   | "lead"
+  | "qualified"
   | "inquiry"
+  | "engaged"
   | "consultation"
+  | "application_ready"
   | "application"
+  | "submitted"
+  | "offer_secured"
   | "visa"
+  | "visa_lodged"
   | "enrolled"
   | "placed"
   | "employment"
@@ -51,6 +58,15 @@ export type ExpenseCategory =
   | "software"
   | "other";
 export type ExpensePaymentMethod = "cash" | "mpesa" | "bank" | "card";
+export type PartnerType = "university" | "digital_skills_platform" | "employer";
+export type PartnerAgreementStatus = "negotiation" | "legal_review" | "signed" | "active" | "renewal_due" | "cancelled";
+export type ProgrammeLevel = "certificate" | "diploma" | "undergraduate" | "masters" | "professional" | "employment";
+export type ApplicationStatus = "draft" | "submitted" | "accepted" | "rejected" | "deferred";
+export type VisaRecordStatus = "not_started" | "checklist_generated" | "submitted" | "approved" | "rejected";
+export type PlacementType = "admission" | "certification" | "employment";
+export type RevenueRecordType = "retainer" | "commission" | "bonus";
+export type RevenueStream = "retainer" | "commission" | "royalty" | "bonus";
+export type TrainingModuleType = "onboarding" | "certification" | "skill_development";
 
 export interface Student {
   id: string;
@@ -67,6 +83,13 @@ export interface Student {
   consultation_requested: boolean;
   consultation_status: ConsultationStatus | null;
   consultation_date: string | null;
+  next_action_date?: string | null;
+  advisory_agreement_signed?: boolean;
+  deposit_paid?: number | null;
+  application_reference?: string | null;
+  offer_letter_received?: boolean;
+  testimonial_requested?: boolean;
+  referral_requested?: boolean;
   visa_status: string | null;
   ielts_enrolled: boolean;
   ielts_amount?: number | null;
@@ -95,6 +118,7 @@ export interface Student {
   referral_code: string | null;
   notes: string | null;
   created_by: string | null;
+  assigned_consultant_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -112,6 +136,17 @@ export interface Consultation {
 
 export interface LocalDatabase {
   students: Student[];
+  student_profiles: StudentProfile[];
+  partners: Partner[];
+  partner_agreements: PartnerAgreement[];
+  programmes: Programme[];
+  applications: ApplicationRecord[];
+  visa_records: VisaRecord[];
+  placements: PlacementRecord[];
+  revenue_records: RevenueRecord[];
+  qa_checkpoints: QaCheckpoint[];
+  market_configs: MarketConfig[];
+  consultant_training: ConsultantTraining[];
   consultations: Consultation[];
   documents: DocumentRecord[];
   commissions: CommissionRecord[];
@@ -126,6 +161,271 @@ export interface LocalDatabase {
   tasks: Task[];
   audit_logs: AuditLog[];
   expenses: ExpenseRecord[];
+}
+
+export interface StudentProfile {
+  id: string;
+  student_id: string;
+  budget_range: "high" | "medium" | "low" | null;
+  career_goal: "research" | "professional" | "academic" | "skills" | "flexible" | "local" | null;
+  academic_history: string | null;
+  preferred_destinations: string[] | null;
+  language_proficiency: string | null;
+  intake_script_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  student?: Pick<Student, "full_name" | "stage" | "country_interest">;
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  type: PartnerType;
+  country: string | null;
+  agreement_status: PartnerAgreementStatus;
+  primary_contact_name: string | null;
+  primary_contact_email: string | null;
+  response_time_hours: number | null;
+  satisfaction_score: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartnerAgreement {
+  id: string;
+  partner_id: string;
+  agreement_type: RevenueRecordType;
+  status: PartnerAgreementStatus;
+  legal_review_complete: boolean;
+  commission_rate: number | null;
+  retainer_amount: number | null;
+  bonus_criteria: Record<string, unknown> | null;
+  fee_structure: Record<string, unknown>;
+  onboarding_checklist: Array<{ label: string; done: boolean }>;
+  signed_at: string | null;
+  renewal_date: string | null;
+  created_at: string;
+  partner?: Pick<Partner, "name" | "type" | "country">;
+}
+
+export interface Programme {
+  id: string;
+  partner_id: string;
+  name: string;
+  destination: string;
+  level: ProgrammeLevel;
+  tuition_fee: number;
+  currency: string;
+  eligibility_criteria: Record<string, unknown>;
+  active: boolean;
+  created_at: string;
+  partner?: Pick<Partner, "name" | "type">;
+}
+
+export interface ApplicationRecord {
+  id: string;
+  student_id: string;
+  programme_id: string;
+  status: ApplicationStatus;
+  offer_letter_url: string | null;
+  submitted_at: string | null;
+  accepted_at: string | null;
+  created_at: string;
+  student?: Pick<Student, "full_name" | "stage">;
+  programme?: Pick<Programme, "name" | "destination" | "tuition_fee">;
+}
+
+export interface VisaRecord {
+  id: string;
+  student_id: string;
+  destination_country: string;
+  status: VisaRecordStatus;
+  checklist_data: Array<{ label: string; done: boolean }>;
+  embassy_location: string | null;
+  appointment_at: string | null;
+  submitted_at: string | null;
+  approved_at: string | null;
+  created_at: string;
+  student?: Pick<Student, "full_name" | "stage">;
+}
+
+export interface PlacementRecord {
+  id: string;
+  student_id: string;
+  programme_id: string | null;
+  partner_id: string | null;
+  type: PlacementType;
+  institution: string | null;
+  role_title: string | null;
+  salary_range: string | null;
+  satisfaction_score: number | null;
+  placed_at: string;
+  created_at: string;
+  student?: Pick<Student, "full_name" | "stage">;
+  partner?: Pick<Partner, "name" | "type">;
+}
+
+export interface RevenueRecord {
+  id: string;
+  student_id: string | null;
+  partner_id: string | null;
+  type: RevenueStream;
+  amount: number;
+  currency: string;
+  recognized_at: string;
+  notes: string | null;
+  created_at: string;
+  partner?: Pick<Partner, "name" | "type">;
+}
+
+export interface QaCheckpoint {
+  id: string;
+  entity_type: "student" | "application" | "visa_record" | "partner_agreement" | "partner";
+  entity_id: string;
+  stage: "intake" | "counselling" | "application" | "visa" | "partner_agreement" | "partner_onboarding" | "partner_performance";
+  label: string;
+  passed: boolean;
+  checklist_data: Record<string, unknown> | null;
+  signed_off_by: string | null;
+  signed_off_at: string | null;
+  created_at: string;
+}
+
+export interface MarketConfig {
+  id: string;
+  country: string;
+  language: string;
+  active: boolean;
+  visa_requirements: Array<{ label: string; timeline?: string; fee?: string }>;
+  policy_notes: string;
+  market_owner: string | null;
+  official_sources: Array<{ label: string; url: string; last_checked: string }>;
+  last_verified_at: string | null;
+  fee_configuration: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConsultantTraining {
+  id: string;
+  consultant_username: string;
+  module_name: string;
+  module_type: TrainingModuleType;
+  completed: boolean;
+  score: number | null;
+  certified_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface DecisionRecommendation {
+  recommendation: string;
+  confidence: number;
+  criteria: string[];
+  error?: string;
+}
+
+export interface QaGateResult {
+  stage: string;
+  passed: boolean;
+  checks: Array<{ label: string; passed: boolean; detail: string }>;
+}
+
+export interface PartnerKpi {
+  partner_id: string;
+  partner_name: string;
+  conversion_rate: number;
+  retention_rate: number;
+  roi: number;
+  response_time_hours: number | null;
+  satisfaction_score: number | null;
+}
+
+export interface OperatingSystemSnapshot {
+  partners: Partner[];
+  partnerAgreements: PartnerAgreement[];
+  programmes: Programme[];
+  applications: ApplicationRecord[];
+  visaRecords: VisaRecord[];
+  placements: PlacementRecord[];
+  revenueRecords: RevenueRecord[];
+  qaCheckpoints: QaCheckpoint[];
+  marketConfigs: MarketConfig[];
+  consultantTraining: ConsultantTraining[];
+  studentProfiles: StudentProfile[];
+  partnerKpis: PartnerKpi[];
+  qaGateResults: QaGateResult[];
+  recommendations: Array<{ student: Pick<Student, "id" | "full_name" | "stage">; recommendation: DecisionRecommendation }>;
+  franchiseGates: FranchiseGateStatus[];
+  stuckStudents: StuckStudent[];
+  revenueBlend: RevenueBlendItem[];
+  operatingRhythm: OperatingRhythmItem[];
+  stationMap: StationMapItem[];
+  promptTemplates: PromptTemplate[];
+  validationChecklist: ValidationChecklistGroup[];
+  metrics: {
+    placementRate: number;
+    averageSatisfaction: number;
+    partnerRoi: number;
+    averageTimeToPlacementDays: number;
+    pipelineConversion: number;
+    qaComplianceRate: number;
+  };
+}
+
+export interface FranchiseGateStatus {
+  gate: "G0" | "G1" | "G2" | "G3" | "G4" | "G5" | "G6" | "G7";
+  label: string;
+  stage: StudentStage;
+  owner: string;
+  maxDays: number;
+  count: number;
+  exitChecklist: Array<{ label: string; passed: boolean }>;
+}
+
+export interface StuckStudent {
+  student_id: string;
+  full_name: string;
+  gate: string;
+  stage: StudentStage;
+  daysInGate: number;
+  maxDays: number;
+  owner: string;
+  nextActionDate: string | null;
+}
+
+export interface RevenueBlendItem {
+  stream: RevenueStream;
+  amount: number;
+  share: number;
+  target: string;
+  status: "healthy" | "watch" | "fragile";
+}
+
+export interface OperatingRhythmItem {
+  cadence: "Daily" | "Weekly" | "Monthly" | "Quarterly";
+  meeting: string;
+  question: string;
+  owner: string;
+}
+
+export interface StationMapItem {
+  station: string;
+  owns: string;
+  gates: string;
+}
+
+export interface PromptTemplate {
+  title: string;
+  role: string;
+  task: string;
+  output: string;
+  guardrails: string[];
+}
+
+export interface ValidationChecklistGroup {
+  title: string;
+  items: Array<{ label: string; passed: boolean }>;
 }
 
 export interface DocumentRecord {
@@ -227,6 +527,10 @@ export interface PortalAccessRecord {
   student_id: string;
   access_token: string;
   token_expires_at: string;
+  password_hash: string | null;
+  must_change_password: boolean;
+  password_reset_token: string | null;
+  password_reset_expires_at: string | null;
   is_active: boolean;
   last_login_at: string | null;
   created_at: string;

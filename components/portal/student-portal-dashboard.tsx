@@ -59,6 +59,7 @@ export function StudentPortalDashboard({
     university_name: snapshot?.student.university_name ?? ""
   });
   const [consultationForm, setConsultationForm] = useState({ preferred_date: "", preferred_time: "" });
+  const [passwordForm, setPasswordForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
 
   async function handleLogout() {
     await fetch("/api/portal/session/logout", { method: "POST" });
@@ -131,6 +132,36 @@ export function StudentPortalDashboard({
       }
       setSuccess("Document uploaded successfully.");
       if (fileInputRef.current) fileInputRef.current.value = "";
+      router.refresh();
+    });
+  }
+
+  async function handlePasswordChange(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setError("New password and confirmation do not match.");
+      return;
+    }
+
+    startTransition(async () => {
+      const response = await fetch("/api/portal/password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_password: passwordForm.current_password,
+          new_password: passwordForm.new_password
+        })
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        setError(body?.error ?? "Could not change password.");
+        return;
+      }
+      setSuccess("Password changed successfully.");
+      setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
       router.refresh();
     });
   }
@@ -402,6 +433,51 @@ export function StudentPortalDashboard({
             </div>
           </Card>
         </div>
+
+        <Card className="dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)]">
+          <CardHeader title="Portal Password" description="Change the temporary password sent to your email." />
+          <form className="grid gap-4 md:grid-cols-3" onSubmit={handlePasswordChange}>
+            <label className="block text-sm text-slate-600 dark:text-slate-300">
+              <span className="mb-2 block font-medium text-ink dark:text-white">Current Password</span>
+              <input
+                type="password"
+                className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
+                value={passwordForm.current_password}
+                onChange={(event) => setPasswordForm((current) => ({ ...current, current_password: event.target.value }))}
+                required
+              />
+            </label>
+            <label className="block text-sm text-slate-600 dark:text-slate-300">
+              <span className="mb-2 block font-medium text-ink dark:text-white">New Password</span>
+              <input
+                type="password"
+                className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
+                value={passwordForm.new_password}
+                onChange={(event) => setPasswordForm((current) => ({ ...current, new_password: event.target.value }))}
+                minLength={8}
+                required
+              />
+            </label>
+            <label className="block text-sm text-slate-600 dark:text-slate-300">
+              <span className="mb-2 block font-medium text-ink dark:text-white">Confirm Password</span>
+              <input
+                type="password"
+                className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
+                value={passwordForm.confirm_password}
+                onChange={(event) => setPasswordForm((current) => ({ ...current, confirm_password: event.target.value }))}
+                minLength={8}
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-2xl bg-[linear-gradient(135deg,#213343,#2a5167)] px-4 py-3 font-semibold text-white dark:bg-[linear-gradient(135deg,#ff7a59,#cf6a34)] dark:shadow-[0_18px_34px_rgba(255,122,89,0.2)] md:col-span-3"
+            >
+              {isPending ? "Saving..." : "Change Password"}
+            </button>
+          </form>
+        </Card>
 
         <Card className="dark:bg-[linear-gradient(180deg,#142136_0%,#0f1b2d_100%)]">
           <CardHeader title="Required Documents" description="Upload PDF or image files up to 5MB." />

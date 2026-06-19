@@ -2,20 +2,31 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   mockAuditLogs,
+  mockApplications,
   mockCommissions,
+  mockConsultantTraining,
   mockConsultations,
   mockDocuments,
   mockExpenses,
+  mockMarketConfigs,
   mockPayments,
+  mockPartnerAgreements,
+  mockPartners,
+  mockPlacements,
   mockPortalAccess,
   mockPortalActivity,
   mockPortalMessages,
+  mockProgrammes,
+  mockQaCheckpoints,
   mockReferrals,
+  mockRevenueRecords,
+  mockStudentProfiles,
   mockStudentNotes,
   mockStudents,
   mockTasks,
   mockTemplates,
-  mockUsers
+  mockUsers,
+  mockVisaRecords
 } from "@/lib/mock-data";
 import type { LocalDatabase } from "@/lib/types";
 
@@ -25,6 +36,17 @@ const dbFile = path.join(dataDir, "local-db.json");
 function createSeed(): LocalDatabase {
   return {
     students: structuredClone(mockStudents),
+    student_profiles: structuredClone(mockStudentProfiles),
+    partners: structuredClone(mockPartners),
+    partner_agreements: structuredClone(mockPartnerAgreements),
+    programmes: structuredClone(mockProgrammes),
+    applications: structuredClone(mockApplications),
+    visa_records: structuredClone(mockVisaRecords),
+    placements: structuredClone(mockPlacements),
+    revenue_records: structuredClone(mockRevenueRecords),
+    qa_checkpoints: structuredClone(mockQaCheckpoints),
+    market_configs: structuredClone(mockMarketConfigs),
+    consultant_training: structuredClone(mockConsultantTraining),
     consultations: structuredClone(mockConsultations),
     documents: structuredClone(mockDocuments),
     commissions: structuredClone(mockCommissions),
@@ -60,6 +82,17 @@ export async function readLocalDb(): Promise<LocalDatabase> {
 
   return {
     students: parsed.students ?? seed.students,
+    student_profiles: parsed.student_profiles ?? seed.student_profiles,
+    partners: parsed.partners ?? seed.partners,
+    partner_agreements: parsed.partner_agreements ?? seed.partner_agreements,
+    programmes: parsed.programmes ?? seed.programmes,
+    applications: parsed.applications ?? seed.applications,
+    visa_records: parsed.visa_records ?? seed.visa_records,
+    placements: parsed.placements ?? seed.placements,
+    revenue_records: parsed.revenue_records ?? seed.revenue_records,
+    qa_checkpoints: parsed.qa_checkpoints ?? seed.qa_checkpoints,
+    market_configs: parsed.market_configs ?? seed.market_configs,
+    consultant_training: parsed.consultant_training ?? seed.consultant_training,
     consultations: parsed.consultations ?? seed.consultations,
     documents: parsed.documents ?? seed.documents,
     commissions: parsed.commissions ?? seed.commissions,

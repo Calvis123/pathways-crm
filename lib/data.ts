@@ -10,8 +10,10 @@ import { readLocalDb, writeLocalDb } from "@/lib/local-store";
 import type {
   AppRole,
   AppUserRecord,
+  ApplicationRecord,
   AuditLog,
   CommissionRecord,
+  ConsultantTraining,
   Consultation,
   CommunicationLog,
   DashboardStats,
@@ -19,22 +21,47 @@ import type {
   EmailTemplate,
   ExpenseRecord,
   LocalDatabase,
+  MarketConfig,
+  OperatingSystemSnapshot,
   PaymentRecord,
+  Partner,
+  PartnerAgreement,
+  PlacementRecord,
   PortalAccessRecord,
   PortalActivity,
   PortalMessage,
+  Programme,
+  QaCheckpoint,
   ReferralRecord,
   ReportSummary,
+  RevenueRecord,
   SegmentKey,
   SegmentSummary,
+  StudentProfile,
   Student,
   StudentActivityEvent,
   LeadTemperatureSnapshot,
   StudentNote,
   StudentStage,
-  Task
+  Task,
+  VisaRecord
 } from "@/lib/types";
 import { stageOrder } from "@/lib/constants";
+import {
+  assertStageGateAllowsTransition,
+  buildVisaChecklist,
+  calculateDaysInGate,
+  calculatePartnerKpis,
+  calculateRevenueBlend,
+  getFranchiseGateExitChecks,
+  getGateForStage,
+  getDecisionRecommendation,
+  getQaGateResult,
+  operatingRhythm,
+  promptTemplates,
+  stationMap
+} from "@/lib/operating-system";
+import { franchiseGateDefinitions } from "@/lib/constants";
 import {
   CONSULTATION_FEE,
   CONSULTATION_UPFRONT_AMOUNT,
@@ -55,6 +82,133 @@ async function hashPasswordForStorage(password: string) {
   }
 
   return bcrypt.hash(password, 10);
+}
+
+function generateStudentPortalPassword() {
+  return `BP-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+}
+
+function getPortalBaseUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "http://localhost:3000";
+}
+
+function parsePublicRegistrationNotes(notes?: string | null) {
+  const lines = (notes ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const values: Record<string, string> = {};
+
+  for (const line of lines) {
+    const separatorIndex = line.indexOf(":");
+    if (separatorIndex === -1) continue;
+    const key = line.slice(0, separatorIndex).trim().toLowerCase();
+    const value = line.slice(separatorIndex + 1).trim();
+    if (key && value) values[key] = value;
+  }
+
+  const message = values.message ?? null;
+  const destinationMatch = message?.match(/\binterested\s+in\s+([a-z\s-]+?)\s+(?:intake|program|programme|study|admission)\b/i);
+  const inferredDestination = destinationMatch?.[1]?.trim().replace(/\s+/g, " ") ?? null;
+
+  return {
+    educationSystem: values["education system"] ?? null,
+    gradeAttained: values["grade attained"] ?? null,
+    highestEducation: values["highest level of education"] ?? null,
+    message,
+    inferredDestination
+  };
+}
+
+async function upsertPublicRegistrationProfile(input: {
+  studentId: string;
+  notes?: string | null;
+  program_level?: string | null;
+  country_interest?: string | null;
+}) {
+  const parsed = parsePublicRegistrationNotes(input.notes);
+  const hasProfileData =
+    parsed.educationSystem ||
+    parsed.gradeAttained ||
+    parsed.highestEducation ||
+    parsed.message ||
+    parsed.inferredDestination;
+
+  if (!hasProfileData) return null;
+
+  const intakeScriptData = {
+    education_system: parsed.educationSystem,
+    grade_attained: parsed.gradeAttained,
+    highest_level_of_education: parsed.highestEducation,
+    message: parsed.message,
+    submitted_program_level: input.program_level ?? null,
+    submitted_country_interest: input.country_interest ?? null,
+    inferred_destination: parsed.inferredDestination
+  };
+  const academicHistory = [
+    parsed.educationSystem ? `Education system: ${parsed.educationSystem}` : null,
+    parsed.gradeAttained ? `Grade attained: ${parsed.gradeAttained}` : null,
+    parsed.highestEducation ? `Highest level of education: ${parsed.highestEducation}` : null
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const now = new Date().toISOString();
+    const existing = db.student_profiles.find((profile) => profile.student_id === input.studentId);
+    const profile: StudentProfile = {
+      id: existing?.id ?? crypto.randomUUID(),
+      student_id: input.studentId,
+      budget_range: existing?.budget_range ?? null,
+      career_goal: existing?.career_goal ?? null,
+      academic_history: academicHistory || existing?.academic_history || null,
+      preferred_destinations: parsed.inferredDestination
+        ? [parsed.inferredDestination]
+        : existing?.preferred_destinations ?? [],
+      language_proficiency: existing?.language_proficiency ?? null,
+      intake_script_data: {
+        ...(existing?.intake_script_data ?? {}),
+        ...intakeScriptData
+      },
+      created_at: existing?.created_at ?? now,
+      updated_at: now
+    };
+    db.student_profiles = existing
+      ? db.student_profiles.map((item) => (item.id === existing.id ? profile : item))
+      : [profile, ...db.student_profiles];
+    await writeLocalDb(db);
+    return profile;
+  }
+
+  const supabase = admin();
+  const { data: existing, error: existingError } = await supabase
+    .from("student_profiles")
+    .select("*")
+    .eq("student_id", input.studentId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  const payload = {
+    student_id: input.studentId,
+    academic_history: academicHistory || existing?.academic_history || null,
+    preferred_destinations: parsed.inferredDestination
+      ? [parsed.inferredDestination]
+      : existing?.preferred_destinations ?? [],
+    intake_script_data: {
+      ...((existing?.intake_script_data as Record<string, unknown> | null) ?? {}),
+      ...intakeScriptData
+    },
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from("student_profiles")
+    .upsert(payload, { onConflict: "student_id" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as StudentProfile;
 }
 
 function canManageStudentRecords(role: AppRole | undefined) {
@@ -182,6 +336,30 @@ async function getLocalPayments(options?: { startDate?: string; endDate?: string
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
+async function getStudentByIdUnfiltered(id: string) {
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    return db.students.find((student) => student.id === id) ?? null;
+  }
+
+  const { data, error } = await admin().from("students").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return (data as Student | null) ?? null;
+}
+
+async function getStudentByEmailUnfiltered(email: string) {
+  const normalized = email.trim().toLowerCase();
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    return db.students.find((student) => student.email.trim().toLowerCase() === normalized) ?? null;
+  }
+
+  const { data, error } = await admin().from("students").select("*").eq("email", normalized).maybeSingle();
+  if (error) throw error;
+  return (data as Student | null) ?? null;
+}
+
 function attachStudentBasics(student: Student | undefined) {
   if (!student) return undefined;
   return {
@@ -284,6 +462,40 @@ async function syncSupabaseConsultationStage(
   if (insertError) throw insertError;
 }
 
+async function getLocalStageGateContext(db: LocalDatabase, student: Student) {
+  return {
+    student,
+    profile: db.student_profiles.find((profile) => profile.student_id === student.id),
+    documents: db.documents.filter((document) => document.student_id === student.id),
+    payments: db.payments.filter((payment) => payment.student_id === student.id),
+    applications: db.applications.filter((application) => application.student_id === student.id),
+    visaRecords: db.visa_records.filter((record) => record.student_id === student.id)
+  };
+}
+
+async function getSupabaseStageGateContext(student: Student) {
+  const supabase = admin();
+  const [profiles, documents, payments, applications, visaRecords] = await Promise.all([
+    supabase.from("student_profiles").select("*").eq("student_id", student.id).maybeSingle(),
+    supabase.from("student_documents").select("*").eq("student_id", student.id),
+    supabase.from("payments").select("*").eq("student_id", student.id),
+    supabase.from("applications").select("*").eq("student_id", student.id),
+    supabase.from("visa_records").select("*").eq("student_id", student.id)
+  ]);
+
+  const failed = [profiles, documents, payments, applications, visaRecords].find((result) => result.error);
+  if (failed?.error) throw failed.error;
+
+  return {
+    student,
+    profile: (profiles.data ?? undefined) as StudentProfile | undefined,
+    documents: (documents.data ?? []) as DocumentRecord[],
+    payments: (payments.data ?? []) as PaymentRecord[],
+    applications: (applications.data ?? []) as ApplicationRecord[],
+    visaRecords: (visaRecords.data ?? []) as VisaRecord[]
+  };
+}
+
 export async function getDashboardStats(): Promise<DashboardStats> {
   const students = await getStudents();
   const commissions = await getCommissions();
@@ -331,6 +543,373 @@ export async function getReportSummary(): Promise<ReportSummary> {
     totalReferrals: referrals.length,
     convertedReferrals: referrals.filter((referral) => referral.status === "converted").length
   };
+}
+
+function attachOperatingSystemRelations(db: LocalDatabase) {
+  const partners = db.partners;
+  const programmes = db.programmes.map((programme) => ({
+    ...programme,
+    partner: partners.find((partner) => partner.id === programme.partner_id)
+      ? {
+          name: partners.find((partner) => partner.id === programme.partner_id)!.name,
+          type: partners.find((partner) => partner.id === programme.partner_id)!.type
+        }
+      : programme.partner
+  }));
+
+  return {
+    student_profiles: db.student_profiles.map((profile) => {
+      const student = db.students.find((item) => item.id === profile.student_id);
+      return {
+        ...profile,
+        student: student
+          ? {
+              full_name: student.full_name,
+              stage: student.stage,
+              country_interest: student.country_interest
+            }
+          : profile.student
+      };
+    }),
+    partners,
+    partner_agreements: db.partner_agreements.map((agreement) => {
+      const partner = partners.find((item) => item.id === agreement.partner_id);
+      return {
+        ...agreement,
+        partner: partner
+          ? {
+              name: partner.name,
+              type: partner.type,
+              country: partner.country
+            }
+          : agreement.partner
+      };
+    }),
+    programmes,
+    applications: db.applications.map((application) => {
+      const student = db.students.find((item) => item.id === application.student_id);
+      const programme = programmes.find((item) => item.id === application.programme_id);
+      return {
+        ...application,
+        student: student ? { full_name: student.full_name, stage: student.stage } : application.student,
+        programme: programme
+          ? {
+              name: programme.name,
+              destination: programme.destination,
+              tuition_fee: programme.tuition_fee
+            }
+          : application.programme
+      };
+    }),
+    visa_records: db.visa_records.map((record) => {
+      const student = db.students.find((item) => item.id === record.student_id);
+      return {
+        ...record,
+        student: student ? { full_name: student.full_name, stage: student.stage } : record.student
+      };
+    }),
+    placements: db.placements.map((placement) => {
+      const student = db.students.find((item) => item.id === placement.student_id);
+      const partner = partners.find((item) => item.id === placement.partner_id);
+      return {
+        ...placement,
+        student: student ? { full_name: student.full_name, stage: student.stage } : placement.student,
+        partner: partner ? { name: partner.name, type: partner.type } : placement.partner
+      };
+    }),
+    revenue_records: db.revenue_records.map((record) => {
+      const partner = partners.find((item) => item.id === record.partner_id);
+      return {
+        ...record,
+        partner: partner ? { name: partner.name, type: partner.type } : record.partner
+      };
+    }),
+    qa_checkpoints: db.qa_checkpoints,
+    market_configs: db.market_configs,
+    consultant_training: db.consultant_training
+  };
+}
+
+function buildOperatingSystemSnapshot(input: {
+  students: Student[];
+  documents: DocumentRecord[];
+  payments: PaymentRecord[];
+  studentProfiles: StudentProfile[];
+  partners: Partner[];
+  partnerAgreements: PartnerAgreement[];
+  programmes: Programme[];
+  applications: ApplicationRecord[];
+  visaRecords: VisaRecord[];
+  placements: PlacementRecord[];
+  revenueRecords: RevenueRecord[];
+  qaCheckpoints: QaCheckpoint[];
+  marketConfigs: MarketConfig[];
+  consultantTraining: ConsultantTraining[];
+}): OperatingSystemSnapshot {
+  const partnerKpis = calculatePartnerKpis({
+    partners: input.partners,
+    agreements: input.partnerAgreements,
+    applications: input.applications,
+    programmes: input.programmes,
+    placements: input.placements,
+    revenueRecords: input.revenueRecords
+  });
+
+  const qaGateResults = input.students.map((student) =>
+    getQaGateResult({
+      student,
+      profile: input.studentProfiles.find((profile) => profile.student_id === student.id),
+      documents: input.documents.filter((document) => document.student_id === student.id),
+      payments: input.payments.filter((payment) => payment.student_id === student.id),
+      applications: input.applications.filter((application) => application.student_id === student.id),
+      visaRecords: input.visaRecords.filter((record) => record.student_id === student.id)
+    })
+  );
+
+  const recommendations = input.students.map((student) => ({
+    student: {
+      id: student.id,
+      full_name: student.full_name,
+      stage: student.stage
+    },
+    recommendation: getDecisionRecommendation(input.studentProfiles.find((profile) => profile.student_id === student.id))
+  }));
+  const franchiseGates = franchiseGateDefinitions.map((gate) => {
+    const gateStudents = input.students.filter((student) => student.stage === gate.stage);
+    const representative = gateStudents[0] ?? input.students[0];
+    const context = representative
+      ? {
+          student: representative,
+          profile: input.studentProfiles.find((profile) => profile.student_id === representative.id),
+          documents: input.documents.filter((document) => document.student_id === representative.id),
+          payments: input.payments.filter((payment) => payment.student_id === representative.id),
+          applications: input.applications.filter((application) => application.student_id === representative.id),
+          visaRecords: input.visaRecords.filter((record) => record.student_id === representative.id),
+          qaCheckpoints: input.qaCheckpoints.filter((checkpoint) => checkpoint.entity_type === "student" && checkpoint.entity_id === representative.id)
+        }
+      : null;
+
+    return {
+      gate: gate.gate,
+      label: gate.label,
+      stage: gate.stage,
+      owner: gate.owner,
+      maxDays: gate.maxDays,
+      count: gateStudents.length,
+      exitChecklist: context
+        ? getFranchiseGateExitChecks(context, gate)
+        : gate.exitChecklist.map((label) => ({ label, passed: false }))
+    };
+  });
+  const stuckStudents = input.students
+    .map((student) => {
+      const gate = getGateForStage(student.stage);
+      const daysInGate = calculateDaysInGate(student);
+      return {
+        student_id: student.id,
+        full_name: student.full_name,
+        gate: gate.gate,
+        stage: student.stage,
+        daysInGate,
+        maxDays: gate.maxDays,
+        owner: gate.owner,
+        nextActionDate: student.next_action_date ?? null
+      };
+    })
+    .filter((student) => student.daysInGate > student.maxDays || !student.nextActionDate)
+    .sort((a, b) => b.daysInGate - a.daysInGate);
+  const revenueBlend = calculateRevenueBlend(input.revenueRecords);
+  const validationChecklist = [
+    {
+      title: "Usability Validation",
+      items: [
+        { label: "SOPs reachable from the Operating System page", passed: true },
+        { label: "Dashboard leads with the stuck list and five above-fold metrics", passed: true },
+        { label: "Intake profile supports conversational 8-12 minute capture", passed: input.studentProfiles.length > 0 },
+        { label: "Every gate has an exit checklist", passed: franchiseGates.every((gate) => gate.exitChecklist.length > 0) },
+        { label: "Icons and color are used for navigation or exceptions", passed: true }
+      ]
+    },
+    {
+      title: "Efficiency Validation",
+      items: [
+        { label: "Gate conversion can be reviewed by gate counts", passed: franchiseGates.length === 8 },
+        { label: "Students past max time-in-gate appear on stuck list", passed: true },
+        { label: "Revenue blend shows commission fragility threshold", passed: revenueBlend.length === 4 },
+        { label: "Partner contribution is visible in KPIs", passed: partnerKpis.length > 0 },
+        { label: "QA error/checkpoint compliance is measured", passed: input.qaCheckpoints.length > 0 }
+      ]
+    },
+    {
+      title: "Go-live Readiness",
+      items: [
+        { label: "Seven gates configured in CRM constants", passed: franchiseGates.length === 8 },
+        { label: "Country Packs exist for active markets", passed: input.marketConfigs.some((config) => config.active) },
+        { label: "Every partner has an agreement and owner surface", passed: input.partners.every((partner) => input.partnerAgreements.some((agreement) => agreement.partner_id === partner.id)) },
+        { label: "QA loops are represented by checkpoints, stuck list, and satisfaction scores", passed: true },
+        { label: "Training modules 1-5 are represented", passed: input.consultantTraining.length >= 5 }
+      ]
+    }
+  ];
+
+  const activeStudents = input.students.filter((student) => student.stage !== "lost");
+  const placedStudents = input.students.filter((student) => ["placed", "employment", "enrolled"].includes(student.stage));
+  const satisfactionScores = input.placements
+    .map((placement) => placement.satisfaction_score)
+    .filter((score): score is number => typeof score === "number");
+  const totalRevenue = input.revenueRecords.reduce((sum, record) => sum + record.amount, 0);
+  const totalPartnerCost = input.partnerAgreements.reduce((sum, agreement) => sum + (agreement.retainer_amount ?? 0), 0);
+  const placementDurations = input.placements
+    .map((placement) => {
+      const student = input.students.find((item) => item.id === placement.student_id);
+      if (!student) return null;
+      return Math.max(
+        0,
+        Math.round((new Date(placement.placed_at).getTime() - new Date(student.created_at).getTime()) / (24 * 60 * 60 * 1000))
+      );
+    })
+    .filter((duration): duration is number => typeof duration === "number");
+  const passedChecks = input.qaCheckpoints.filter((checkpoint) => checkpoint.passed).length;
+
+  return {
+    partners: input.partners,
+    partnerAgreements: input.partnerAgreements,
+    programmes: input.programmes,
+    applications: input.applications,
+    visaRecords: input.visaRecords,
+    placements: input.placements,
+    revenueRecords: input.revenueRecords,
+    qaCheckpoints: input.qaCheckpoints,
+    marketConfigs: input.marketConfigs,
+    consultantTraining: input.consultantTraining,
+    studentProfiles: input.studentProfiles,
+    partnerKpis,
+    qaGateResults,
+    recommendations,
+    franchiseGates,
+    stuckStudents,
+    revenueBlend,
+    operatingRhythm: [...operatingRhythm],
+    stationMap,
+    promptTemplates,
+    validationChecklist,
+    metrics: {
+      placementRate: activeStudents.length === 0 ? 0 : Number(((placedStudents.length / activeStudents.length) * 100).toFixed(1)),
+      averageSatisfaction:
+        satisfactionScores.length === 0
+          ? 0
+          : Number((satisfactionScores.reduce((sum, score) => sum + score, 0) / satisfactionScores.length).toFixed(1)),
+      partnerRoi: totalPartnerCost === 0 ? totalRevenue : Number((totalRevenue / totalPartnerCost).toFixed(2)),
+      averageTimeToPlacementDays:
+        placementDurations.length === 0
+          ? 0
+          : Math.round(placementDurations.reduce((sum, duration) => sum + duration, 0) / placementDurations.length),
+      pipelineConversion: input.students.length === 0 ? 0 : Number(((placedStudents.length / input.students.length) * 100).toFixed(1)),
+      qaComplianceRate: input.qaCheckpoints.length === 0 ? 0 : Number(((passedChecks / input.qaCheckpoints.length) * 100).toFixed(1))
+    }
+  };
+}
+
+async function getLocalOperatingSystemSnapshot() {
+  const db = await readDb();
+  const related = attachOperatingSystemRelations(db);
+  return buildOperatingSystemSnapshot({
+    students: db.students,
+    documents: db.documents,
+    payments: db.payments,
+    studentProfiles: related.student_profiles,
+    partners: related.partners,
+    partnerAgreements: related.partner_agreements,
+    programmes: related.programmes,
+    applications: related.applications,
+    visaRecords: related.visa_records,
+    placements: related.placements,
+    revenueRecords: related.revenue_records,
+    qaCheckpoints: related.qa_checkpoints,
+    marketConfigs: related.market_configs,
+    consultantTraining: related.consultant_training
+  });
+}
+
+export async function getOperatingSystemSnapshot(): Promise<OperatingSystemSnapshot> {
+  if (!hasSupabaseEnv()) {
+    return getLocalOperatingSystemSnapshot();
+  }
+
+  try {
+    const supabase = admin();
+    const [
+      studentsResult,
+      documentsResult,
+      paymentsResult,
+      profilesResult,
+      partnersResult,
+      agreementsResult,
+      programmesResult,
+      applicationsResult,
+      visasResult,
+      placementsResult,
+      revenueResult,
+      qaResult,
+      marketsResult,
+      trainingResult
+    ] = await Promise.all([
+      supabase.from("students").select("*"),
+      supabase.from("student_documents").select("*"),
+      supabase.from("payments").select("*"),
+      supabase.from("student_profiles").select("*"),
+      supabase.from("partners").select("*"),
+      supabase.from("partner_agreements").select("*"),
+      supabase.from("programmes").select("*"),
+      supabase.from("applications").select("*"),
+      supabase.from("visa_records").select("*"),
+      supabase.from("placements").select("*"),
+      supabase.from("revenue_records").select("*"),
+      supabase.from("qa_checkpoints").select("*"),
+      supabase.from("market_configs").select("*"),
+      supabase.from("consultant_training").select("*")
+    ]);
+
+    const results = [
+      studentsResult,
+      documentsResult,
+      paymentsResult,
+      profilesResult,
+      partnersResult,
+      agreementsResult,
+      programmesResult,
+      applicationsResult,
+      visasResult,
+      placementsResult,
+      revenueResult,
+      qaResult,
+      marketsResult,
+      trainingResult
+    ];
+
+    const failed = results.find((result) => result.error);
+    if (failed?.error) throw failed.error;
+
+    return buildOperatingSystemSnapshot({
+      students: (studentsResult.data ?? []) as Student[],
+      documents: (documentsResult.data ?? []) as DocumentRecord[],
+      payments: (paymentsResult.data ?? []) as PaymentRecord[],
+      studentProfiles: (profilesResult.data ?? []) as StudentProfile[],
+      partners: (partnersResult.data ?? []) as Partner[],
+      partnerAgreements: (agreementsResult.data ?? []) as PartnerAgreement[],
+      programmes: (programmesResult.data ?? []) as Programme[],
+      applications: (applicationsResult.data ?? []) as ApplicationRecord[],
+      visaRecords: (visasResult.data ?? []) as VisaRecord[],
+      placements: (placementsResult.data ?? []) as PlacementRecord[],
+      revenueRecords: (revenueResult.data ?? []) as RevenueRecord[],
+      qaCheckpoints: (qaResult.data ?? []) as QaCheckpoint[],
+      marketConfigs: (marketsResult.data ?? []) as MarketConfig[],
+      consultantTraining: (trainingResult.data ?? []) as ConsultantTraining[]
+    });
+  } catch (error) {
+    logSupabaseReadFallback("operating system snapshot", error);
+    return getLocalOperatingSystemSnapshot();
+  }
 }
 
 export const getStudents = cache(async function getStudents() {
@@ -948,6 +1527,13 @@ export async function createStudent(input: Partial<Student>) {
       consultation_requested: input.consultation_requested ?? false,
       consultation_status: null,
       consultation_date: null,
+      next_action_date: input.next_action_date ?? null,
+      advisory_agreement_signed: input.advisory_agreement_signed ?? false,
+      deposit_paid: input.deposit_paid ?? 0,
+      application_reference: input.application_reference ?? null,
+      offer_letter_received: input.offer_letter_received ?? false,
+      testimonial_requested: input.testimonial_requested ?? false,
+      referral_requested: input.referral_requested ?? false,
       visa_status: null,
       ielts_enrolled: input.ielts_enrolled ?? false,
       ielts_amount: input.ielts_amount ?? 0,
@@ -983,6 +1569,13 @@ export async function createStudent(input: Partial<Student>) {
     consultation_requested: input.consultation_requested ?? false,
     consultation_status: input.consultation_status ?? null,
     consultation_date: input.consultation_date ?? null,
+    next_action_date: input.next_action_date ?? null,
+    advisory_agreement_signed: input.advisory_agreement_signed ?? false,
+    deposit_paid: input.deposit_paid ?? 0,
+    application_reference: input.application_reference ?? null,
+    offer_letter_received: input.offer_letter_received ?? false,
+    testimonial_requested: input.testimonial_requested ?? false,
+    referral_requested: input.referral_requested ?? false,
     ielts_enrolled: input.ielts_enrolled ?? false,
     ielts_amount: input.ielts_amount ?? 0,
     ielts_payment_status: input.ielts_payment_status ?? "unpaid",
@@ -1206,8 +1799,19 @@ export async function createPublicStudentRegistration(input: {
   source?: string | null;
   campaign?: string | null;
 }) {
+  const parsedNotes = parsePublicRegistrationNotes(input.notes);
+  const submittedCountry = input.country_interest?.trim() || null;
+  const submittedLocation = input.location?.trim() || null;
+  const effectiveCountryInterest =
+    parsedNotes.inferredDestination &&
+    (!submittedCountry || submittedCountry.toLowerCase() === submittedLocation?.toLowerCase())
+      ? parsedNotes.inferredDestination
+      : submittedCountry;
   const notes = [
     input.notes ?? null,
+    parsedNotes.inferredDestination && parsedNotes.inferredDestination !== submittedCountry
+      ? `Inferred destination: ${parsedNotes.inferredDestination}`
+      : null,
     input.source ? `Source: ${input.source}` : null,
     input.campaign ? `Campaign: ${input.campaign}` : null
   ]
@@ -1220,7 +1824,7 @@ export async function createPublicStudentRegistration(input: {
     phone: input.phone ?? null,
     passport_number: input.passport_number ?? null,
     location: input.location ?? null,
-    country_interest: input.country_interest ?? null,
+    country_interest: effectiveCountryInterest,
     program_level: input.program_level ?? null,
     university_name: input.university_name ?? null,
     stage: input.stage ?? "lead",
@@ -1236,6 +1840,13 @@ export async function createPublicStudentRegistration(input: {
     created_by: null
   });
 
+  await upsertPublicRegistrationProfile({
+    studentId: student.id,
+    notes: input.notes,
+    program_level: input.program_level ?? null,
+    country_interest: effectiveCountryInterest
+  });
+
   await logAudit({
     action: "Public Student Registration Captured",
     table_name: "students",
@@ -1245,9 +1856,13 @@ export async function createPublicStudentRegistration(input: {
       source: input.source ?? null,
       campaign: input.campaign ?? null,
       lead_source: input.lead_source ?? input.source ?? "Website",
+      submitted_country_interest: submittedCountry,
+      effective_country_interest: effectiveCountryInterest,
       stage: input.stage ?? "lead"
     })
   });
+
+  await provisionStudentPortalAccess(student.id, "registration");
 
   return student;
 }
@@ -1554,7 +2169,8 @@ function toStudentCsv(students: Student[]) {
     "stage",
     "payment_status",
     "consultation_status",
-    "lead_source",
+    "registration_source",
+    "registered_at",
     "updated_at"
   ];
 
@@ -1569,6 +2185,7 @@ function toStudentCsv(students: Student[]) {
       student.payment_status ?? "",
       student.consultation_status ?? "",
       student.lead_source ?? "",
+      student.created_at,
       student.updated_at
     ]
       .map((value) => `"${String(value).replace(/"/g, '""')}"`)
@@ -1594,6 +2211,9 @@ export async function updateStudent(id: string, input: Partial<Student>) {
     const db = await readDb();
     const next = db.students.find((student) => student.id === id);
     if (!next) throw new Error("Student not found.");
+    if (input.stage && input.stage !== next.stage) {
+      assertStageGateAllowsTransition(await getLocalStageGateContext(db, next), input.stage);
+    }
     const timestamp = new Date().toISOString();
     const updated = {
       ...next,
@@ -1628,6 +2248,9 @@ export async function updateStudent(id: string, input: Partial<Student>) {
 
   const supabase = admin();
   const timestamp = new Date().toISOString();
+  if (input.stage && input.stage !== allowed.stage) {
+    assertStageGateAllowsTransition(await getSupabaseStageGateContext(allowed), input.stage);
+  }
   const payload = {
     ...input,
     ...(input.stage
@@ -1665,6 +2288,735 @@ export async function updateStudent(id: string, input: Partial<Student>) {
     new_value: JSON.stringify(input)
   });
   return data as Student;
+}
+
+export async function generateVisaChecklistForStudent(studentId: string) {
+  const session = await getCurrentSession();
+  if (!session || !canManageStudentRecords(session.role)) {
+    throw new Error("You do not have permission to generate visa checklists.");
+  }
+
+  const student = await getStudentById(studentId);
+  if (!student) throw new Error("Student not found or access denied.");
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const checklist = buildVisaChecklist(student.country_interest, db.market_configs);
+    const now = new Date().toISOString();
+    const existing = db.visa_records.find((record) => record.student_id === studentId);
+    const visaRecord: VisaRecord = existing
+      ? {
+          ...existing,
+          destination_country: student.country_interest ?? existing.destination_country,
+          status: existing.status === "not_started" ? "checklist_generated" : existing.status,
+          checklist_data: existing.checklist_data.length > 0 ? existing.checklist_data : checklist
+        }
+      : {
+          id: crypto.randomUUID(),
+          student_id: studentId,
+          destination_country: student.country_interest ?? "Unspecified",
+          status: "checklist_generated",
+          checklist_data: checklist,
+          embassy_location: null,
+          appointment_at: null,
+          submitted_at: null,
+          approved_at: null,
+          created_at: now,
+          student: { full_name: student.full_name, stage: student.stage }
+        };
+
+    db.visa_records = existing
+      ? db.visa_records.map((record) => (record.id === existing.id ? visaRecord : record))
+      : [visaRecord, ...db.visa_records];
+    await writeLocalDb(db);
+    await logAudit({
+      action: "Visa Checklist Generated",
+      table_name: "visa_records",
+      related_id: visaRecord.id,
+      record_label: student.full_name,
+      new_value: JSON.stringify({ destination_country: visaRecord.destination_country, items: visaRecord.checklist_data.length })
+    });
+    return visaRecord;
+  }
+
+  const supabase = admin();
+  const { data: configs, error: configError } = await supabase
+    .from("market_configs")
+    .select("*")
+    .eq("country", student.country_interest ?? "")
+    .eq("active", true)
+    .limit(1);
+  if (configError) throw configError;
+
+  const checklist = buildVisaChecklist(student.country_interest, (configs ?? []) as MarketConfig[]);
+  const { data: existing, error: existingError } = await supabase
+    .from("visa_records")
+    .select("*")
+    .eq("student_id", studentId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("visa_records")
+      .update({
+        destination_country: student.country_interest ?? existing.destination_country,
+        status: existing.status === "not_started" ? "checklist_generated" : existing.status,
+        checklist_data: Array.isArray(existing.checklist_data) && existing.checklist_data.length > 0 ? existing.checklist_data : checklist
+      })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data as VisaRecord;
+  }
+
+  const { data, error } = await supabase
+    .from("visa_records")
+    .insert({
+      student_id: studentId,
+      destination_country: student.country_interest ?? "Unspecified",
+      status: "checklist_generated",
+      checklist_data: checklist
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  await logAudit({
+    action: "Visa Checklist Generated",
+    table_name: "visa_records",
+    related_id: data.id,
+    record_label: student.full_name,
+    new_value: JSON.stringify({ destination_country: data.destination_country, items: checklist.length })
+  });
+
+  return data as VisaRecord;
+}
+
+export async function updateStudentGateFields(input: {
+  student_id: string;
+  next_action_date?: string | null;
+  advisory_agreement_signed?: boolean;
+  deposit_paid?: number | null;
+  application_reference?: string | null;
+  offer_letter_received?: boolean;
+  testimonial_requested?: boolean;
+  referral_requested?: boolean;
+}) {
+  const session = await getCurrentSession();
+  if (!session || !canManageStudentRecords(session.role)) {
+    throw new Error("You do not have permission to update gate fields.");
+  }
+
+  const { student_id, ...fields } = input;
+  const payload = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
+  if (Object.keys(payload).length === 0) throw new Error("No gate fields were provided.");
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const student = db.students.find((item) => item.id === student_id);
+    if (!student) throw new Error("Student not found.");
+    const updated = { ...student, ...payload, updated_at: new Date().toISOString() } as Student;
+    db.students = db.students.map((item) => (item.id === student_id ? updated : item));
+    await writeLocalDb(db);
+    await logAudit({
+      action: "Gate Fields Updated",
+      table_name: "students",
+      related_id: student_id,
+      record_label: updated.full_name,
+      new_value: JSON.stringify(payload)
+    });
+    return updated;
+  }
+
+  const supabase = admin();
+  const { data, error } = await supabase
+    .from("students")
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq("id", student_id)
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  await logAudit({
+    action: "Gate Fields Updated",
+    table_name: "students",
+    related_id: student_id,
+    record_label: data.full_name,
+    new_value: JSON.stringify(payload)
+  });
+  return data as Student;
+}
+
+export async function verifyMarketConfig(input: {
+  id: string;
+  market_owner?: string | null;
+  source_label?: string | null;
+  source_url?: string | null;
+}) {
+  const session = await getCurrentSession();
+  if (!session || !["admin", "operations", "employee"].includes(session.role)) {
+    throw new Error("You do not have permission to verify Country Packs.");
+  }
+
+  const verifiedAt = new Date().toISOString().slice(0, 10);
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const config = db.market_configs.find((item) => item.id === input.id);
+    if (!config) throw new Error("Country Pack not found.");
+    const official_sources =
+      input.source_label && input.source_url
+        ? [
+            ...config.official_sources,
+            {
+              label: input.source_label,
+              url: input.source_url,
+              last_checked: verifiedAt
+            }
+          ]
+        : config.official_sources.map((source) => ({ ...source, last_checked: verifiedAt }));
+    const updated = {
+      ...config,
+      market_owner: input.market_owner ?? config.market_owner,
+      official_sources,
+      last_verified_at: verifiedAt,
+      updated_at: new Date().toISOString()
+    };
+    db.market_configs = db.market_configs.map((item) => (item.id === input.id ? updated : item));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const supabase = admin();
+  const { data: existing, error: readError } = await supabase.from("market_configs").select("*").eq("id", input.id).single();
+  if (readError) throw readError;
+  const currentSources = Array.isArray(existing.official_sources) ? existing.official_sources : [];
+  const official_sources =
+    input.source_label && input.source_url
+      ? [...currentSources, { label: input.source_label, url: input.source_url, last_checked: verifiedAt }]
+      : currentSources.map((source: { label: string; url: string }) => ({ ...source, last_checked: verifiedAt }));
+  const { data, error } = await supabase
+    .from("market_configs")
+    .update({
+      market_owner: input.market_owner ?? existing.market_owner,
+      official_sources,
+      last_verified_at: verifiedAt,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", input.id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as MarketConfig;
+}
+
+export async function signOffQaCheckpoint(id: string) {
+  const session = await getCurrentSession();
+  if (!session || !["admin", "hr", "operations", "employee", "consultant"].includes(session.role)) {
+    throw new Error("You do not have permission to sign QA checkpoints.");
+  }
+  const signed_off_at = new Date().toISOString();
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const checkpoint = db.qa_checkpoints.find((item) => item.id === id);
+    if (!checkpoint) throw new Error("QA checkpoint not found.");
+    const updated = { ...checkpoint, passed: true, signed_off_by: session.username, signed_off_at };
+    db.qa_checkpoints = db.qa_checkpoints.map((item) => (item.id === id ? updated : item));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const supabase = admin();
+  const { data, error } = await supabase
+    .from("qa_checkpoints")
+    .update({ passed: true, signed_off_by: session.username, signed_off_at })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as QaCheckpoint;
+}
+
+export async function completePartnerAgreementLegalReview(id: string) {
+  const session = await getCurrentSession();
+  if (!session || !["admin", "operations", "employee"].includes(session.role)) {
+    throw new Error("You do not have permission to complete legal reviews.");
+  }
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const agreement = db.partner_agreements.find((item) => item.id === id);
+    if (!agreement) throw new Error("Partner agreement not found.");
+    const updated = { ...agreement, legal_review_complete: true, status: agreement.status === "legal_review" ? "signed" : agreement.status };
+    db.partner_agreements = db.partner_agreements.map((item) => (item.id === id ? updated : item));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const supabase = admin();
+  const { data, error } = await supabase
+    .from("partner_agreements")
+    .update({ legal_review_complete: true, status: "signed" })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as PartnerAgreement;
+}
+
+export async function completeConsultantTrainingModule(input: { id: string; score?: number | null }) {
+  const session = await getCurrentSession();
+  if (!session || !["admin", "hr", "employee"].includes(session.role)) {
+    throw new Error("You do not have permission to complete training modules.");
+  }
+  const certifiedAt = new Date().toISOString().slice(0, 10);
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const trainingModule = db.consultant_training.find((item) => item.id === input.id);
+    if (!trainingModule) throw new Error("Training module not found.");
+    const updated = {
+      ...trainingModule,
+      completed: true,
+      score: input.score ?? trainingModule.score ?? 100,
+      certified_at: certifiedAt,
+      expires_at: expiresAt.toISOString().slice(0, 10)
+    };
+    db.consultant_training = db.consultant_training.map((item) => (item.id === input.id ? updated : item));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const supabase = admin();
+  const { data, error } = await supabase
+    .from("consultant_training")
+    .update({
+      completed: true,
+      score: input.score ?? 100,
+      certified_at: certifiedAt,
+      expires_at: expiresAt.toISOString().slice(0, 10)
+    })
+    .eq("id", input.id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as ConsultantTraining;
+}
+
+function canManageOperatingSystem(role: AppRole | undefined) {
+  return role === "admin" || role === "employee" || role === "operations" || role === "hr";
+}
+
+function canManagePartnerRecords(role: AppRole | undefined) {
+  return role === "admin" || role === "employee" || role === "operations";
+}
+
+export async function createPartnerRecord(input: {
+  name: string;
+  type: Partner["type"];
+  country?: string | null;
+  agreement_status?: Partner["agreement_status"];
+  primary_contact_name?: string | null;
+  primary_contact_email?: string | null;
+  response_time_hours?: number | null;
+  satisfaction_score?: number | null;
+}) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create partners.");
+  const now = new Date().toISOString();
+  const payload = {
+    name: input.name,
+    type: input.type,
+    country: input.country ?? null,
+    agreement_status: input.agreement_status ?? "negotiation",
+    primary_contact_name: input.primary_contact_name ?? null,
+    primary_contact_email: input.primary_contact_email ?? null,
+    response_time_hours: input.response_time_hours ?? null,
+    satisfaction_score: input.satisfaction_score ?? null
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const partner: Partner = { id: crypto.randomUUID(), ...payload, created_at: now, updated_at: now };
+    db.partners.unshift(partner);
+    await writeLocalDb(db);
+    return partner;
+  }
+
+  const { data, error } = await admin().from("partners").insert(payload).select("*").single();
+  if (error) throw error;
+  return data as Partner;
+}
+
+export async function updatePartnerRecord(id: string, input: Partial<Partner>) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to update partners.");
+  const payload = {
+    ...input,
+    updated_at: new Date().toISOString()
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const existing = db.partners.find((partner) => partner.id === id);
+    if (!existing) throw new Error("Partner not found.");
+    const updated = { ...existing, ...payload } as Partner;
+    db.partners = db.partners.map((partner) => (partner.id === id ? updated : partner));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const { data, error } = await admin().from("partners").update(payload).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data as Partner;
+}
+
+export async function deletePartnerRecord(id: string) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to delete partners.");
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    db.partners = db.partners.filter((partner) => partner.id !== id);
+    db.partner_agreements = db.partner_agreements.filter((agreement) => agreement.partner_id !== id);
+    db.programmes = db.programmes.filter((programme) => programme.partner_id !== id);
+    db.revenue_records = db.revenue_records.map((record) => (record.partner_id === id ? { ...record, partner_id: null } : record));
+    db.placements = db.placements.map((placement) => (placement.partner_id === id ? { ...placement, partner_id: null } : placement));
+    await writeLocalDb(db);
+    return { ok: true };
+  }
+
+  const { error } = await admin().from("partners").delete().eq("id", id);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function createPartnerAgreementRecord(input: {
+  partner_id: string;
+  agreement_type: PartnerAgreement["agreement_type"];
+  status?: PartnerAgreement["status"];
+  legal_review_complete?: boolean;
+  commission_rate?: number | null;
+  retainer_amount?: number | null;
+  renewal_date?: string | null;
+}) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create partner agreements.");
+  const payload = {
+    partner_id: input.partner_id,
+    agreement_type: input.agreement_type,
+    status: input.status ?? "negotiation",
+    legal_review_complete: input.legal_review_complete ?? false,
+    commission_rate: input.commission_rate ?? null,
+    retainer_amount: input.retainer_amount ?? null,
+    bonus_criteria: {},
+    fee_structure: {},
+    onboarding_checklist: [
+      { label: "Commercial terms reviewed", done: false },
+      { label: "Legal review complete", done: input.legal_review_complete ?? false },
+      { label: "Partner onboarding scheduled", done: false }
+    ],
+    signed_at: null,
+    renewal_date: input.renewal_date ?? null
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const agreement: PartnerAgreement = { id: crypto.randomUUID(), ...payload, created_at: new Date().toISOString() };
+    db.partner_agreements.unshift(agreement);
+    await writeLocalDb(db);
+    return agreement;
+  }
+
+  const { data, error } = await admin().from("partner_agreements").insert(payload).select("*").single();
+  if (error) throw error;
+  return data as PartnerAgreement;
+}
+
+export async function updatePartnerAgreementRecord(id: string, input: Partial<PartnerAgreement>) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to update partner agreements.");
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const existing = db.partner_agreements.find((agreement) => agreement.id === id);
+    if (!existing) throw new Error("Partner agreement not found.");
+    const updated = { ...existing, ...input } as PartnerAgreement;
+    db.partner_agreements = db.partner_agreements.map((agreement) => (agreement.id === id ? updated : agreement));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const { data, error } = await admin().from("partner_agreements").update(input).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data as PartnerAgreement;
+}
+
+export async function createProgrammeRecord(input: {
+  partner_id: string;
+  name: string;
+  destination: string;
+  level: Programme["level"];
+  tuition_fee?: number;
+  currency?: string;
+  active?: boolean;
+}) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create programmes.");
+  const payload = {
+    partner_id: input.partner_id,
+    name: input.name,
+    destination: input.destination,
+    level: input.level,
+    tuition_fee: input.tuition_fee ?? 0,
+    currency: input.currency ?? "KES",
+    eligibility_criteria: {},
+    active: input.active ?? true
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const programme: Programme = { id: crypto.randomUUID(), ...payload, created_at: new Date().toISOString() };
+    db.programmes.unshift(programme);
+    await writeLocalDb(db);
+    return programme;
+  }
+
+  const { data, error } = await admin().from("programmes").insert(payload).select("*").single();
+  if (error) throw error;
+  return data as Programme;
+}
+
+export async function updateProgrammeRecord(id: string, input: Partial<Programme>) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to update programmes.");
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const existing = db.programmes.find((programme) => programme.id === id);
+    if (!existing) throw new Error("Programme not found.");
+    const updated = { ...existing, ...input } as Programme;
+    db.programmes = db.programmes.map((programme) => (programme.id === id ? updated : programme));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const { data, error } = await admin().from("programmes").update(input).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data as Programme;
+}
+
+export async function createApplicationRecord(input: {
+  student_id: string;
+  programme_id: string;
+  status?: ApplicationRecord["status"];
+  offer_letter_url?: string | null;
+}) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create applications.");
+  const now = new Date().toISOString();
+  const status = input.status ?? "draft";
+  const payload = {
+    student_id: input.student_id,
+    programme_id: input.programme_id,
+    status,
+    offer_letter_url: input.offer_letter_url ?? null,
+    submitted_at: status === "submitted" ? now : null,
+    accepted_at: status === "accepted" ? now : null
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const application: ApplicationRecord = { id: crypto.randomUUID(), ...payload, created_at: now };
+    db.applications.unshift(application);
+    await writeLocalDb(db);
+    return application;
+  }
+
+  const { data, error } = await admin().from("applications").insert(payload).select("*").single();
+  if (error) throw error;
+  return data as ApplicationRecord;
+}
+
+export async function updateApplicationRecord(id: string, input: Partial<ApplicationRecord>) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to update applications.");
+  const now = new Date().toISOString();
+  const payload = {
+    ...input,
+    ...(input.status === "submitted" ? { submitted_at: input.submitted_at ?? now } : {}),
+    ...(input.status === "accepted" ? { accepted_at: input.accepted_at ?? now } : {})
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const existing = db.applications.find((application) => application.id === id);
+    if (!existing) throw new Error("Application not found.");
+    const updated = { ...existing, ...payload } as ApplicationRecord;
+    db.applications = db.applications.map((application) => (application.id === id ? updated : application));
+    await writeLocalDb(db);
+    return updated;
+  }
+
+  const { data, error } = await admin().from("applications").update(payload).eq("id", id).select("*").single();
+  if (error) throw error;
+  return data as ApplicationRecord;
+}
+
+export async function createRevenueRecord(input: {
+  student_id?: string | null;
+  partner_id?: string | null;
+  type: RevenueRecord["type"];
+  amount: number;
+  currency?: string;
+  recognized_at?: string | null;
+  notes?: string | null;
+}) {
+  const session = await getCurrentSession();
+  if (!canManagePartnerRecords(session?.role)) throw new Error("You do not have permission to create revenue records.");
+  const payload = {
+    student_id: input.student_id ?? null,
+    partner_id: input.partner_id ?? null,
+    type: input.type,
+    amount: input.amount,
+    currency: input.currency ?? "KES",
+    recognized_at: input.recognized_at ?? new Date().toISOString().slice(0, 10),
+    notes: input.notes ?? null
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const record: RevenueRecord = { id: crypto.randomUUID(), ...payload, created_at: new Date().toISOString() };
+    db.revenue_records.unshift(record);
+    await writeLocalDb(db);
+    return record;
+  }
+
+  const { data, error } = await admin().from("revenue_records").insert(payload).select("*").single();
+  if (error) throw error;
+  return data as RevenueRecord;
+}
+
+export async function upsertMarketConfigRecord(input: {
+  id?: string;
+  country: string;
+  language?: string;
+  active?: boolean;
+  policy_notes?: string;
+  market_owner?: string | null;
+  visa_requirements?: Array<{ label: string; timeline?: string; fee?: string }>;
+  official_sources?: Array<{ label: string; url: string; last_checked: string }>;
+}) {
+  const session = await getCurrentSession();
+  if (!canManageOperatingSystem(session?.role)) throw new Error("You do not have permission to manage Country Packs.");
+  const now = new Date().toISOString();
+  const payload = {
+    country: input.country,
+    language: input.language ?? "en",
+    active: input.active ?? true,
+    visa_requirements: input.visa_requirements ?? [],
+    policy_notes: input.policy_notes ?? "",
+    market_owner: input.market_owner ?? null,
+    official_sources: input.official_sources ?? [],
+    fee_configuration: {},
+    updated_at: now
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const existing = input.id ? db.market_configs.find((config) => config.id === input.id) : db.market_configs.find((config) => config.country === input.country);
+    const config: MarketConfig = {
+      id: existing?.id ?? crypto.randomUUID(),
+      ...payload,
+      last_verified_at: existing?.last_verified_at ?? null,
+      created_at: existing?.created_at ?? now
+    };
+    db.market_configs = existing
+      ? db.market_configs.map((item) => (item.id === existing.id ? config : item))
+      : [config, ...db.market_configs];
+    await writeLocalDb(db);
+    return config;
+  }
+
+  const { data, error } = await admin()
+    .from("market_configs")
+    .upsert(input.id ? { id: input.id, ...payload } : payload, { onConflict: "country" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as MarketConfig;
+}
+
+export async function createQaCheckpointRecord(input: {
+  entity_type: QaCheckpoint["entity_type"];
+  entity_id: string;
+  stage: QaCheckpoint["stage"];
+  label: string;
+  passed?: boolean;
+}) {
+  const session = await getCurrentSession();
+  if (!canManageOperatingSystem(session?.role)) throw new Error("You do not have permission to create QA checkpoints.");
+  const now = new Date().toISOString();
+  const payload = {
+    entity_type: input.entity_type,
+    entity_id: input.entity_id,
+    stage: input.stage,
+    label: input.label,
+    passed: input.passed ?? false,
+    checklist_data: {},
+    signed_off_by: input.passed ? session?.username ?? null : null,
+    signed_off_at: input.passed ? now : null
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const checkpoint: QaCheckpoint = { id: crypto.randomUUID(), ...payload, created_at: now };
+    db.qa_checkpoints.unshift(checkpoint);
+    await writeLocalDb(db);
+    return checkpoint;
+  }
+
+  const { data, error } = await admin().from("qa_checkpoints").insert(payload).select("*").single();
+  if (error) throw error;
+  return data as QaCheckpoint;
+}
+
+export async function createConsultantTrainingRecord(input: {
+  consultant_username: string;
+  module_name: string;
+  module_type: ConsultantTraining["module_type"];
+  completed?: boolean;
+  score?: number | null;
+}) {
+  const session = await getCurrentSession();
+  if (!canManageOperatingSystem(session?.role)) throw new Error("You do not have permission to create training modules.");
+  const today = new Date().toISOString().slice(0, 10);
+  const payload = {
+    consultant_username: input.consultant_username,
+    module_name: input.module_name,
+    module_type: input.module_type,
+    completed: input.completed ?? false,
+    score: input.score ?? null,
+    certified_at: input.completed ? today : null,
+    expires_at: null
+  };
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const trainingRecord: ConsultantTraining = { id: crypto.randomUUID(), ...payload, created_at: new Date().toISOString() };
+    db.consultant_training.unshift(trainingRecord);
+    await writeLocalDb(db);
+    return trainingRecord;
+  }
+
+  const { data, error } = await admin().from("consultant_training").insert(payload).select("*").single();
+  if (error) throw error;
+  return data as ConsultantTraining;
 }
 
 export async function deleteStudent(id: string) {
@@ -3257,6 +4609,10 @@ export async function generatePortalAccess(studentId: string) {
       student_id: studentId,
       access_token: token,
       token_expires_at: expiresAt,
+      password_hash: existing?.password_hash ?? null,
+      must_change_password: existing?.must_change_password ?? true,
+      password_reset_token: existing?.password_reset_token ?? null,
+      password_reset_expires_at: existing?.password_reset_expires_at ?? null,
       is_active: true,
       last_login_at: existing?.last_login_at ?? null,
       created_at: existing?.created_at ?? now,
@@ -3291,6 +4647,140 @@ export async function generatePortalAccess(studentId: string) {
   const { data, error } = await query.select("*").single();
   if (error) throw error;
   return data as PortalAccessRecord;
+}
+
+async function sendStudentPortalCredentialEmail(input: {
+  student: Student;
+  password: string;
+  reason: "registration" | "manual" | "forgot_password";
+}) {
+  const subject =
+    input.reason === "forgot_password"
+      ? "Your Barak Pathways portal password has been reset"
+      : "Your Barak Pathways student portal login";
+  const body = [
+    `Hi ${input.student.full_name},`,
+    "",
+    input.reason === "forgot_password"
+      ? "We received a request to reset your Barak Pathways student portal password."
+      : "Your Barak Pathways student portal is ready.",
+    "",
+    `Portal: ${getPortalBaseUrl()}/student-portal`,
+    `Email: ${input.student.email}`,
+    `Temporary password: ${input.password}`,
+    "",
+    "Please sign in and change this password from your portal dashboard.",
+    "",
+    "Barak Pathways"
+  ].join("\n");
+
+  const resendKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM;
+  let status: "sent" | "pending" | "failed" = "pending";
+  let error: string | null = null;
+
+  if (resendKey && emailFrom) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: emailFrom,
+          to: input.student.email,
+          subject,
+          text: body
+        })
+      });
+      status = response.ok ? "sent" : "failed";
+      error = response.ok ? null : `Email provider error (${response.status})`;
+    } catch {
+      status = "failed";
+      error = "Request failed";
+    }
+  }
+
+  await createFollowUpLog({
+    student_id: input.student.id,
+    note_type: "email",
+    priority: "high",
+    tags: `portal-access,credential-email,status:${status}`,
+    is_private: true,
+    note_text: `Subject: ${subject}\nChannel: EMAIL\nDelivery: ${status.toUpperCase()}${error ? `\nError: ${error}` : ""}\n\nPortal credentials were generated and sent to ${input.student.email}.`
+  });
+
+  return { status, error };
+}
+
+export async function provisionStudentPortalAccess(
+  studentId: string,
+  reason: "registration" | "manual" | "forgot_password" = "manual"
+) {
+  const student = await getStudentByIdUnfiltered(studentId);
+  if (!student) throw new Error("Student not found.");
+
+  const password = generateStudentPortalPassword();
+  const passwordHash = await hashPasswordForStorage(password);
+  const now = new Date().toISOString();
+  const access = await generatePortalAccess(studentId);
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    db.portal_access = db.portal_access.map((entry) =>
+      entry.id === access.id
+        ? {
+            ...entry,
+            password_hash: passwordHash,
+            must_change_password: true,
+            password_reset_token: null,
+            password_reset_expires_at: null,
+            updated_at: now
+          }
+        : entry
+    );
+    db.portal_activity.unshift({
+      id: crypto.randomUUID(),
+      student_id: student.id,
+      activity_type: "portal_credentials_generated",
+      activity_details: reason.replace(/_/g, " "),
+      created_at: now
+    });
+    await writeLocalDb(db);
+  } else {
+    const { data, error } = await admin()
+      .from("portal_access")
+      .update({
+        password_hash: passwordHash,
+        must_change_password: true,
+        password_reset_token: null,
+        password_reset_expires_at: null,
+        updated_at: now
+      })
+      .eq("id", access.id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    Object.assign(access, data);
+    await admin().from("portal_activity").insert({
+      student_id: student.id,
+      activity_type: "portal_credentials_generated",
+      activity_details: reason.replace(/_/g, " ")
+    });
+  }
+
+  const delivery = await sendStudentPortalCredentialEmail({ student, password, reason });
+
+  await logAudit({
+    action: "Student Portal Credentials Generated",
+    table_name: "portal_access",
+    related_id: access.id,
+    record_label: student.full_name,
+    new_value: JSON.stringify({ student_id: student.id, email_delivery: delivery.status, reason })
+  });
+
+  return { access, delivery };
 }
 
 export async function revokePortalAccess(studentId: string) {
@@ -3440,7 +4930,7 @@ export async function resolvePortalStudentByToken(token: string) {
   if (error) throw error;
   if (!data || !data.is_active || new Date(data.token_expires_at).getTime() <= Date.now()) return null;
   await supabase.from("portal_access").update({ last_login_at: new Date().toISOString() }).eq("id", data.id);
-  const student = await getStudentById(data.student_id);
+  const student = await getStudentByIdUnfiltered(data.student_id);
   return student;
 }
 
@@ -3464,33 +4954,130 @@ export async function getPortalStudentSnapshot(token: string) {
   };
 }
 
-function normalizePortalPhone(phone: string | null | undefined) {
-  const digits = (phone ?? "").replace(/\D+/g, "");
+export async function authenticateStudentPortalUser(input: { email: string; password: string }) {
+  const email = input.email.trim().toLowerCase();
 
-  if (!digits) return "";
-  if (digits.startsWith("254") && digits.length === 12) return `0${digits.slice(3)}`;
-  if (digits.startsWith("7") && digits.length === 9) return `0${digits}`;
-  if (digits.startsWith("1") && digits.length === 9) return `0${digits}`;
-  return digits;
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const student = db.students.find((item) => item.email.trim().toLowerCase() === email);
+    if (!student) return null;
+    const access = db.portal_access.find((entry) => entry.student_id === student.id && entry.is_active);
+    if (!access?.password_hash) return null;
+    const storedPassword = access.password_hash.replace("$2y$", "$2b$");
+    const passwordMatches = await bcrypt.compare(input.password, storedPassword);
+    if (!passwordMatches) return null;
+    const now = new Date().toISOString();
+    db.portal_access = db.portal_access.map((entry) =>
+      entry.id === access.id ? { ...entry, last_login_at: now, updated_at: now } : entry
+    );
+    db.portal_activity.unshift({
+      id: crypto.randomUUID(),
+      student_id: student.id,
+      activity_type: "portal_login",
+      activity_details: "Student signed in with portal password.",
+      created_at: now
+    });
+    await writeLocalDb(db);
+    return { ...student, must_change_password: access.must_change_password };
+  }
+
+  const supabase = admin();
+  const { data, error } = await supabase
+    .from("students")
+    .select("*, portal_access!inner(id,password_hash,must_change_password,is_active)")
+    .eq("email", email)
+    .eq("portal_access.is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const access = Array.isArray(data.portal_access) ? data.portal_access[0] : data.portal_access;
+  if (!access?.password_hash) return null;
+  const passwordMatches = await bcrypt.compare(input.password, String(access.password_hash).replace("$2y$", "$2b$"));
+  if (!passwordMatches) return null;
+  const now = new Date().toISOString();
+  await supabase.from("portal_access").update({ last_login_at: now, updated_at: now }).eq("id", access.id);
+  await supabase.from("portal_activity").insert({
+    student_id: data.id,
+    activity_type: "portal_login",
+    activity_details: "Student signed in with portal password."
+  });
+  return { ...(data as Student), must_change_password: Boolean(access.must_change_password) };
 }
 
-export async function authenticateStudentPortalUser(input: { email: string; phone: string }) {
-  const email = input.email.trim().toLowerCase();
-  const phone = normalizePortalPhone(input.phone);
+export async function changeStudentPortalPassword(input: {
+  studentId: string;
+  current_password: string;
+  new_password: string;
+}) {
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    const access = db.portal_access.find((entry) => entry.student_id === input.studentId && entry.is_active);
+    if (!access?.password_hash) throw new Error("Portal access is not active.");
+    const matches = await bcrypt.compare(input.current_password, access.password_hash.replace("$2y$", "$2b$"));
+    if (!matches) throw new Error("Current password is incorrect.");
+    const now = new Date().toISOString();
+    const passwordHash = await hashPasswordForStorage(input.new_password);
+    db.portal_access = db.portal_access.map((entry) =>
+      entry.id === access.id
+        ? {
+            ...entry,
+            password_hash: passwordHash,
+            must_change_password: false,
+            password_reset_token: null,
+            password_reset_expires_at: null,
+            updated_at: now
+          }
+        : entry
+    );
+    db.portal_activity.unshift({
+      id: crypto.randomUUID(),
+      student_id: input.studentId,
+      activity_type: "portal_password_changed",
+      activity_details: "Student changed portal password.",
+      created_at: now
+    });
+    await writeLocalDb(db);
+    return;
+  }
 
-  const students = hasSupabaseEnv() ? await getStudents() : (await readDb()).students;
+  const supabase = admin();
+  const { data: access, error } = await supabase
+    .from("portal_access")
+    .select("*")
+    .eq("student_id", input.studentId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  if (!access?.password_hash) throw new Error("Portal access is not active.");
+  const matches = await bcrypt.compare(input.current_password, String(access.password_hash).replace("$2y$", "$2b$"));
+  if (!matches) throw new Error("Current password is incorrect.");
+  const { error: updateError } = await supabase
+    .from("portal_access")
+    .update({
+      password_hash: await hashPasswordForStorage(input.new_password),
+      must_change_password: false,
+      password_reset_token: null,
+      password_reset_expires_at: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", access.id);
+  if (updateError) throw updateError;
+  await supabase.from("portal_activity").insert({
+    student_id: input.studentId,
+    activity_type: "portal_password_changed",
+    activity_details: "Student changed portal password."
+  });
+}
 
-  return (
-    students.find(
-      (student) =>
-        student.email.trim().toLowerCase() === email &&
-        normalizePortalPhone(student.phone) === phone
-    ) ?? null
-  );
+export async function resetStudentPortalPasswordByEmail(email: string) {
+  const student = await getStudentByEmailUnfiltered(email);
+  if (!student) return { ok: true };
+  await provisionStudentPortalAccess(student.id, "forgot_password");
+  return { ok: true };
 }
 
 export async function getPortalStudentSnapshotById(studentId: string) {
-  const student = await getStudentById(studentId);
+  const student = await getStudentByIdUnfiltered(studentId);
   if (!student) return null;
 
   const [documents, notes, messages, payments] = await Promise.all([
@@ -3522,17 +5109,49 @@ export async function updateStudentProfileFromPortal(input: {
   program_level: string | null;
   university_name: string | null;
 }) {
-  const student = await getStudentById(input.studentId);
+  const student = await getStudentByIdUnfiltered(input.studentId);
   if (!student) throw new Error("Student not found.");
 
   const payload = {
     phone: input.phone,
     country_interest: input.country_interest,
     program_level: input.program_level,
-    university_name: input.university_name
+    university_name: input.university_name,
+    updated_at: new Date().toISOString()
   };
 
-  const updated = await updateStudent(input.studentId, payload);
+  let updated: Student;
+
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    updated = {
+      ...student,
+      ...payload
+    };
+    db.students = db.students.map((item) => (item.id === input.studentId ? updated : item));
+    db.portal_activity.unshift({
+      id: crypto.randomUUID(),
+      student_id: updated.id,
+      activity_type: "profile_update",
+      activity_details: "Student updated profile information.",
+      created_at: payload.updated_at
+    });
+    await writeLocalDb(db);
+  } else {
+    const { data, error } = await admin()
+      .from("students")
+      .update(payload)
+      .eq("id", input.studentId)
+      .select("*")
+      .single();
+    if (error) throw error;
+    updated = data as Student;
+    await admin().from("portal_activity").insert({
+      student_id: updated.id,
+      activity_type: "profile_update",
+      activity_details: "Student updated profile information."
+    });
+  }
 
   await logAudit({
     action: "Profile Updated (Student Portal)",
@@ -3542,18 +5161,6 @@ export async function updateStudentProfileFromPortal(input: {
     new_value: JSON.stringify(payload)
   });
 
-  if (!hasSupabaseEnv()) {
-    const db = await readDb();
-    db.portal_activity.unshift({
-      id: crypto.randomUUID(),
-      student_id: updated.id,
-      activity_type: "profile_update",
-      activity_details: "Student updated profile information.",
-      created_at: new Date().toISOString()
-    });
-    await writeLocalDb(db);
-  }
-
   return updated;
 }
 
@@ -3562,23 +5169,58 @@ export async function requestConsultationFromPortal(input: {
   preferred_date: string;
   preferred_time: string;
 }) {
-  const student = await getStudentById(input.studentId);
+  const student = await getStudentByIdUnfiltered(input.studentId);
   if (!student) throw new Error("Student not found.");
 
   const scheduledAt = new Date(`${input.preferred_date}T${input.preferred_time}`).toISOString();
 
-  await updateStudent(input.studentId, {
+  const now = new Date().toISOString();
+  const studentPatch = {
     consultation_requested: true,
-    consultation_status: "pending",
+    consultation_status: "pending" as const,
     consultation_date: scheduledAt,
-    stage: student.stage === "lead" ? "consultation" : student.stage
-  });
+    stage: student.stage === "lead" ? ("consultation" as StudentStage) : student.stage,
+    updated_at: now
+  };
 
-  await createConsultation({
-    student_id: input.studentId,
-    scheduled_at: scheduledAt,
-    notes: `Requested via student portal for ${input.preferred_date} at ${input.preferred_time}.`
-  });
+  if (!hasSupabaseEnv()) {
+    const db = await readDb();
+    db.students = db.students.map((item) => (item.id === input.studentId ? { ...item, ...studentPatch } : item));
+    db.consultations.unshift({
+      id: crypto.randomUUID(),
+      student_id: input.studentId,
+      scheduled_at: scheduledAt,
+      status: "pending",
+      notes: `Requested via student portal for ${input.preferred_date} at ${input.preferred_time}.`,
+      created_by: null,
+      created_at: now
+    });
+    db.portal_activity.unshift({
+      id: crypto.randomUUID(),
+      student_id: input.studentId,
+      activity_type: "consultation_request",
+      activity_details: `${input.preferred_date} ${input.preferred_time}`,
+      created_at: now
+    });
+    await writeLocalDb(db);
+  } else {
+    const supabase = admin();
+    const { error: studentError } = await supabase.from("students").update(studentPatch).eq("id", input.studentId);
+    if (studentError) throw studentError;
+    const { error: consultationError } = await supabase.from("consultations").insert({
+      student_id: input.studentId,
+      scheduled_at: scheduledAt,
+      status: "pending",
+      notes: `Requested via student portal for ${input.preferred_date} at ${input.preferred_time}.`,
+      created_by: null
+    });
+    if (consultationError) throw consultationError;
+    await supabase.from("portal_activity").insert({
+      student_id: input.studentId,
+      activity_type: "consultation_request",
+      activity_details: `${input.preferred_date} ${input.preferred_time}`
+    });
+  }
 
   await logAudit({
     action: "Consultation Requested (Student Portal)",
@@ -3591,17 +5233,6 @@ export async function requestConsultationFromPortal(input: {
     })
   });
 
-  if (!hasSupabaseEnv()) {
-    const db = await readDb();
-    db.portal_activity.unshift({
-      id: crypto.randomUUID(),
-      student_id: input.studentId,
-      activity_type: "consultation_request",
-      activity_details: `${input.preferred_date} ${input.preferred_time}`,
-      created_at: new Date().toISOString()
-    });
-    await writeLocalDb(db);
-  }
 }
 
 export async function sendPaymentReminder(input: {

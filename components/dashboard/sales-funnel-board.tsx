@@ -32,10 +32,16 @@ const funnelStages: Array<{
   description: string;
 }> = [
   { id: "lead", name: "Lead", icon: personOutline, color: "#6B7280", description: "Fresh prospects" },
+  { id: "qualified", name: "Qualified", icon: eyeOutline, color: "#64748B", description: "Fit, funds, and intent checked" },
   { id: "inquiry", name: "Inquiry", icon: eyeOutline, color: "#8B5CF6", description: "Initial conversations" },
+  { id: "engaged", name: "Engaged", icon: chatbubbleEllipsesOutline, color: "#14B8A6", description: "Agreement and deposit in progress" },
   { id: "consultation", name: "Consultation", icon: chatbubbleEllipsesOutline, color: "#0EA5E9", description: "Meeting scheduled or completed" },
+  { id: "application_ready", name: "Application Ready", icon: documentTextOutline, color: "#0284C7", description: "Documents ready for application" },
   { id: "application", name: "Application", icon: documentTextOutline, color: "#2563EB", description: "Application in progress" },
+  { id: "submitted", name: "Submitted", icon: documentTextOutline, color: "#1D4ED8", description: "Application lodged" },
+  { id: "offer_secured", name: "Offer Secured", icon: ribbonOutline, color: "#7C3AED", description: "Offer received and explained" },
   { id: "visa", name: "Visa", icon: airplaneOutline, color: "#DB2777", description: "Visa processing" },
+  { id: "visa_lodged", name: "Visa Lodged", icon: airplaneOutline, color: "#BE185D", description: "Visa submitted with evidence pack" },
   { id: "enrolled", name: "Enrolled", icon: schoolOutline, color: "#10B981", description: "Student enrolled" },
   { id: "placed", name: "Placed", icon: ribbonOutline, color: "#059669", description: "Placement confirmed" },
   { id: "employment", name: "Employment", icon: briefcaseOutline, color: "#6366F1", description: "Post-study employment" },
