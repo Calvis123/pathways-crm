@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Button, LinkButton } from "@/components/ui/button";
 import { CONSULTATION_FEE, getConsultationBalance, getConsultationPaid } from "@/lib/finance";
-import type { AppRole, AuditLog, DashboardStats, Student } from "@/lib/types";
+import type { AppRole, AuditLog, DashboardStats, Student, StudentStage } from "@/lib/types";
 import { formatCurrency, formatDate, normalizeKenyanPhone } from "@/lib/utils";
 import { canAccessFinance, isPrivilegedRole } from "@/lib/auth-shared";
 
@@ -139,6 +139,50 @@ const kanbanStages = [
   }
 ] as const;
 
+const workflowBuckets: Array<{
+  id: string;
+  label: string;
+  stages: StudentStage[];
+  tone: string;
+  detail: string;
+}> = [
+  {
+    id: "intake",
+    label: "Intake",
+    stages: ["lead", "qualified", "inquiry"],
+    tone: "border-slate-200 bg-slate-50 text-slate-700",
+    detail: "New leads and first qualification"
+  },
+  {
+    id: "counselling",
+    label: "Counselling",
+    stages: ["engaged", "consultation"],
+    tone: "border-sky-200 bg-sky-50 text-sky-700",
+    detail: "Active advisory and follow-up"
+  },
+  {
+    id: "application",
+    label: "Application",
+    stages: ["application_ready", "application", "submitted", "offer_secured"],
+    tone: "border-blue-200 bg-blue-50 text-blue-700",
+    detail: "Documents, submissions, and offers"
+  },
+  {
+    id: "visa",
+    label: "Visa",
+    stages: ["visa", "visa_lodged"],
+    tone: "border-amber-200 bg-amber-50 text-amber-700",
+    detail: "Checklist, evidence, and lodgement"
+  },
+  {
+    id: "placed",
+    label: "Placed",
+    stages: ["enrolled", "placed", "employment"],
+    tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    detail: "Enrollment, placement, and employment"
+  }
+];
+
 const PIPELINE_ITEMS_PER_PAGE = 10;
 
 function canManage(role: AppRole | null) {
@@ -189,10 +233,10 @@ export function DashboardWorkspace({
   const [showFilters, setShowFilters] = useState(false);
   const [status, setStatus] = useState("");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [bulkStage, setBulkStage] = useState("consultation");
+  const [bulkStage, setBulkStage] = useState<StudentStage>("consultation");
   const [bulkPayment, setBulkPayment] = useState<"full" | "partial" | "none">("partial");
   const [stagePages, setStagePages] = useState<Record<string, number>>({});
-  const [selectedPipelineStage, setSelectedPipelineStage] = useState<string>("inquiry");
+  const [selectedPipelineStage, setSelectedPipelineStage] = useState<StudentStage>("inquiry");
   const manager = canManage(user?.role ?? null);
   const canSeeFinance = canAccessFinance(user?.role ?? null);
 
@@ -264,6 +308,24 @@ export function DashboardWorkspace({
   const newThisWeek = students.filter(
     (student) => new Date(student.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000
   ).length;
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const activeStudents = students.filter((student) => !["lost", "employment"].includes(student.stage));
+  const applicationsInProgress = students.filter((student) =>
+    ["application_ready", "application", "submitted", "offer_secured"].includes(student.stage)
+  );
+  const pendingVisas = students.filter((student) => ["visa", "visa_lodged"].includes(student.stage));
+  const placementsThisMonth = students.filter(
+    (student) =>
+      ["enrolled", "placed", "employment"].includes(student.stage) &&
+      new Date(student.updated_at).getTime() >= monthStart.getTime()
+  ).length;
+  const workflowSummary = workflowBuckets.map((bucket) => ({
+    ...bucket,
+    count: students.filter((student) => bucket.stages.includes(student.stage)).length,
+    visibleCount: filteredStudents.filter((student) => bucket.stages.includes(student.stage)).length
+  }));
   const ieltsRevenue = students
     .filter((student) => student.ielts_enrolled && student.ielts_payment_status === "paid")
     .reduce((sum, student) => sum + (student.ielts_amount ?? 0), 0);
@@ -495,7 +557,7 @@ export function DashboardWorkspace({
                 <>
                   <select
                     value={bulkStage}
-                    onChange={(event) => setBulkStage(event.target.value)}
+                    onChange={(event) => setBulkStage(event.target.value as StudentStage)}
                     className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-white"
                   >
                     {kanbanStages.map((stage) => (
@@ -539,23 +601,62 @@ export function DashboardWorkspace({
         <div className="grid gap-5 bg-[#fffaf5] p-5 dark:bg-transparent lg:p-6 xl:grid-cols-[1fr_340px]">
           <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Total</p>
-                <p className="mt-3 text-3xl font-semibold text-[#213343] dark:text-white">{stats.totalStudents}</p>
-              </div>
-              <div className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Placed</p>
-                <p className="mt-3 text-3xl font-semibold text-emerald-600">{stats.placedStudents}</p>
-              </div>
-              <div className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">This Week</p>
-                <p className="mt-3 text-3xl font-semibold text-blue-600">+{newThisWeek}</p>
-              </div>
-              <div className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Conversion</p>
-                <p className="mt-3 text-3xl font-semibold text-[#213343] dark:text-white">{Math.round(stats.conversionRate)}%</p>
-              </div>
+              {[
+                {
+                  label: "My Active Students",
+                  value: activeStudents.length,
+                  detail: `+${newThisWeek} this week`,
+                  valueClassName: "text-[#213343] dark:text-white"
+                },
+                {
+                  label: "Applications In Progress",
+                  value: applicationsInProgress.length,
+                  detail: "Ready, submitted, or offer stage",
+                  valueClassName: "text-blue-600"
+                },
+                {
+                  label: "Pending Visas",
+                  value: pendingVisas.length,
+                  detail: `${pendingVisas.filter((student) => student.stage === "visa_lodged").length} lodged`,
+                  valueClassName: "text-amber-600"
+                },
+                {
+                  label: "This Month Placements",
+                  value: placementsThisMonth,
+                  detail: `${stats.placedStudents} total successful outcomes`,
+                  valueClassName: "text-emerald-600"
+                }
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+                  <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{item.label}</p>
+                  <p className={`mt-3 text-3xl font-semibold ${item.valueClassName}`}>{item.value}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{item.detail}</p>
+                </div>
+              ))}
             </div>
+
+            <section className="rounded-xl border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg font-semibold text-[#213343] dark:text-white">Student Workflow</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  The live journey from intake through placement, grouped into the five operating buckets.
+                </p>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-5">
+                {workflowSummary.map((bucket) => (
+                  <button
+                    key={bucket.id}
+                    type="button"
+                    onClick={() => setSelectedPipelineStage(bucket.stages[0])}
+                    className={`rounded-lg border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100 ${bucket.tone}`}
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-[0.1em]">{bucket.label}</span>
+                    <span className="mt-3 block text-2xl font-semibold">{bucket.count}</span>
+                    <span className="mt-1 block text-xs opacity-75">{bucket.visibleCount} visible</span>
+                  </button>
+                ))}
+              </div>
+            </section>
 
             <section className="rounded-xl border border-[#eadacc] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -567,7 +668,7 @@ export function DashboardWorkspace({
                 </div>
                 <select
                   value={selectedPipelineStage}
-                  onChange={(event) => setSelectedPipelineStage(event.target.value)}
+                  onChange={(event) => setSelectedPipelineStage(event.target.value as StudentStage)}
                   className="h-11 min-w-[220px] rounded-lg border border-[#eadacc] bg-white px-3 text-sm font-semibold text-[#213343] shadow-sm outline-none transition focus:border-[#ff9a77] focus:ring-4 focus:ring-[#ff7a59]/10 dark:border-white/10 dark:bg-white/[0.05] dark:text-white"
                 >
                   {grouped.map((stage) => (

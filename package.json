@@ -7,7 +7,7 @@
     "dev:reset": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\" && next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "migrate:mysql-to-supabase": "node scripts/migrate-mysql-to-supabase.mjs"
   },

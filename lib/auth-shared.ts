@@ -138,7 +138,7 @@ export function getDefaultRouteForRole(role: AppRole) {
   if (role === "hr") return "/hr-dashboard";
   if (role === "operations") return "/documents";
   if (role === "marketing") return "/students";
-  if (role === "consultant") return "/students";
+  if (role === "consultant") return "/dashboard";
   if (role === "ielts_trainer") return "/ielts-dashboard";
   if (role === "partner") return "/partner-dashboard";
   return "/dashboard";
