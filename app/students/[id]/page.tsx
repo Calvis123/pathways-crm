@@ -6,6 +6,7 @@ import {
   CalendarPlus,
   FileText,
   Mail,
+  MessageCircle,
   MessageSquarePlus,
   Phone,
   Receipt,
@@ -37,7 +38,7 @@ import {
   getGateForStage,
   getQaGateResult
 } from "@/lib/operating-system";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, normalizeKenyanPhone } from "@/lib/utils";
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -106,6 +107,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       : temperature?.status === "warm"
         ? "bg-emerald-100 text-emerald-800 ring-emerald-300"
         : "bg-amber-100 text-amber-900 ring-amber-300";
+  const whatsappPhone = student.phone ? normalizeKenyanPhone(student.phone) : null;
+  const whatsappMessage = encodeURIComponent(
+    `Hello ${student.full_name}, this is Barak Pathways following up on your study abroad application.`
+  );
+  const whatsappHref = whatsappPhone ? `https://wa.me/${whatsappPhone.replace("+", "")}?text=${whatsappMessage}` : null;
 
   const quickActions = [
     { label: "Add Interaction", href: `/students/${student.id}/notes`, icon: MessageSquarePlus },
@@ -149,7 +155,28 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       </section>
 
       <Card className="p-4">
-        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
+          {whatsappHref ? (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noreferrer"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title="This student does not have a valid WhatsApp-ready phone number."
+              className="flex min-h-12 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-[#eadacc] bg-slate-50 px-3 py-2 text-center text-sm font-semibold text-slate-400 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-500"
+            >
+              <MessageCircle className="h-4 w-4" />
+              No WhatsApp
+            </button>
+          )}
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
