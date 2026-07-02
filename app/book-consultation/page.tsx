@@ -170,7 +170,7 @@ export default function BookConsultationPage() {
                     required
                     className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                   >
-                    <option value="">Country interest</option>
+                    <option value="">Destination country</option>
                     {countries.map((country) => (
                       <option key={country} value={country}>
                         {country}
@@ -204,6 +204,12 @@ export default function BookConsultationPage() {
                     </option>
                   ))}
                 </select>
+
+                <input
+                  name="university_name"
+                  placeholder="Preferred university / institution (optional)"
+                  className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
+                />
 
                 {error ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}
 

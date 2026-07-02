@@ -1770,6 +1770,7 @@ export async function createPublicConsultationLead(input: {
   location?: string | null;
   country_interest: string;
   program_level: string;
+  university_name?: string | null;
   start_date?: string | null;
   source?: string | null;
   source_site?: string | null;
@@ -1779,6 +1780,7 @@ export async function createPublicConsultationLead(input: {
   const leadSource = input.source ?? input.source_site ?? "Website";
   const notes = [
     input.start_date ? `Start: ${input.start_date}` : null,
+    input.university_name ? `Preferred university: ${input.university_name}` : null,
     input.source ? `Source: ${input.source}` : null,
     input.source_site ? `Site: ${input.source_site}` : null,
     input.campaign ? `Campaign: ${input.campaign}` : null
@@ -1793,6 +1795,7 @@ export async function createPublicConsultationLead(input: {
     location: input.location ?? null,
     country_interest: input.country_interest,
     program_level: input.program_level,
+    university_name: input.university_name ?? null,
     stage: "lead",
     consultation_requested: true,
     consultation_status: "pending",

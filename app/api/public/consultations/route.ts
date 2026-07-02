@@ -10,6 +10,7 @@ const schema = z.object({
   location: z.string().optional(),
   country_interest: z.string().min(2),
   program_level: z.string().min(2),
+  university_name: z.string().optional(),
   start_date: z.string().optional(),
   source: z.string().optional(),
   source_site: z.string().optional(),
