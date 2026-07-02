@@ -29,7 +29,7 @@ const requiredDocs = [
 ];
 
 const countries = ["Kenya", "Uganda", "Tanzania", "Rwanda", "Nigeria", "Ghana", "UK", "USA", "Canada", "Australia", "Other"];
-const programs = ["Undergraduate", "Masters", "PhD", "Diploma", "Certificate"];
+const programs = ["Diploma", "Undergraduate", "Postgraduate"];
 
 type PortalSnapshot = {
   student: Student;
@@ -55,7 +55,7 @@ export function StudentPortalDashboard({
   const [profileForm, setProfileForm] = useState({
     phone: snapshot?.student.phone ?? "",
     country_interest: snapshot?.student.country_interest ?? "Kenya",
-    program_level: snapshot?.student.program_level ?? "Masters",
+    program_level: snapshot?.student.program_level ?? "Undergraduate",
     university_name: snapshot?.student.university_name ?? ""
   });
   const [consultationForm, setConsultationForm] = useState({ preferred_date: "", preferred_time: "" });
@@ -303,7 +303,7 @@ export function StudentPortalDashboard({
                 <input value={student.email} disabled className="w-full rounded-2xl border border-[#eadacc] bg-[#fff6ef] px-4 py-3 dark:border-white/10 dark:bg-white/5 dark:text-slate-200" />
               </label>
               <label className="block text-sm text-slate-600 dark:text-slate-300">
-                <span className="mb-2 block font-medium text-ink dark:text-white">Phone Number</span>
+                <span className="mb-2 block font-medium text-ink dark:text-white">WhatsApp number / alternative phone number</span>
                 <input
                   className="w-full rounded-2xl border border-[#eadacc] px-4 py-3 dark:border-white/10 dark:bg-[#18263b] dark:text-white"
                   value={profileForm.phone}

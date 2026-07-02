@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const countries = ["UK", "Malta", "Cyprus", "Spain", "Canada", "Australia", "Germany", "USA", "New Zealand"];
-const programs = ["Undergraduate", "Postgraduate", "Other"];
+const programs = ["Diploma", "Undergraduate", "Postgraduate"];
 const startDates = ["2026", "2027", "Not decided yet"];
 
 async function readJsonResponse(response: Response) {
@@ -39,6 +39,7 @@ export default function BookConsultationPage() {
       body: JSON.stringify({
         ...Object.fromEntries(formData.entries()),
         source: formData.get("source") || searchParams.get("source") || "Website",
+        source_site: window.location.hostname,
         campaign: formData.get("campaign") || searchParams.get("campaign") || "Direct",
         referral_code: searchParams.get("ref") ?? undefined
       })
@@ -154,7 +155,7 @@ export default function BookConsultationPage() {
                 <input
                   name="phone"
                   required
-                  placeholder="WhatsApp number"
+                  placeholder="WhatsApp number / alternative phone number"
                   className="rounded-2xl border border-[#eadacc] px-4 py-3 outline-none ring-gold/30 focus:ring-2"
                 />
                 <input

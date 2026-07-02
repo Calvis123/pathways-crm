@@ -122,6 +122,25 @@ function parsePublicRegistrationNotes(notes?: string | null) {
   };
 }
 
+const retiredRegistrationNoteLabels = new Set([
+  "education system",
+  "grade attained",
+  "highest level of education"
+]);
+
+function sanitizePublicRegistrationNotes(notes?: string | null) {
+  return (notes ?? "")
+    .split(/\r?\n|\s+\|\s+/)
+    .map((line) => line.trim())
+    .filter((line) => {
+      const separatorIndex = line.indexOf(":");
+      if (separatorIndex === -1) return Boolean(line);
+      const key = line.slice(0, separatorIndex).trim().toLowerCase();
+      return !retiredRegistrationNoteLabels.has(key);
+    })
+    .join("\n");
+}
+
 async function upsertPublicRegistrationProfile(input: {
   studentId: string;
   notes?: string | null;
@@ -1753,12 +1772,15 @@ export async function createPublicConsultationLead(input: {
   program_level: string;
   start_date?: string | null;
   source?: string | null;
+  source_site?: string | null;
   campaign?: string | null;
   referral_code?: string | null;
 }) {
+  const leadSource = input.source ?? input.source_site ?? "Website";
   const notes = [
     input.start_date ? `Start: ${input.start_date}` : null,
     input.source ? `Source: ${input.source}` : null,
+    input.source_site ? `Site: ${input.source_site}` : null,
     input.campaign ? `Campaign: ${input.campaign}` : null
   ]
     .filter(Boolean)
@@ -1774,7 +1796,7 @@ export async function createPublicConsultationLead(input: {
     stage: "lead",
     consultation_requested: true,
     consultation_status: "pending",
-    lead_source: input.source ?? "Website",
+    lead_source: leadSource,
     referral_code: input.referral_code ?? null,
     notes: notes || "Public consultation request",
     created_by: null
@@ -1786,7 +1808,9 @@ export async function createPublicConsultationLead(input: {
     related_id: student.id,
     record_label: student.full_name,
     new_value: JSON.stringify({
-      source: input.source ?? "Website",
+      source: input.source ?? null,
+      source_site: input.source_site ?? null,
+      lead_source: leadSource,
       campaign: input.campaign ?? null,
       referral_code: input.referral_code ?? null
     })
@@ -1866,9 +1890,11 @@ export async function createPublicStudentRegistration(input: {
   lead_source?: string | null;
   referral_code?: string | null;
   source?: string | null;
+  source_site?: string | null;
   campaign?: string | null;
 }) {
-  const parsedNotes = parsePublicRegistrationNotes(input.notes);
+  const sanitizedNotes = sanitizePublicRegistrationNotes(input.notes);
+  const parsedNotes = parsePublicRegistrationNotes(sanitizedNotes);
   const submittedCountry = input.country_interest?.trim() || null;
   const submittedLocation = input.location?.trim() || null;
   const effectiveCountryInterest =
@@ -1877,17 +1903,19 @@ export async function createPublicStudentRegistration(input: {
       ? parsedNotes.inferredDestination
       : submittedCountry;
   const notes = [
-    input.notes ?? null,
+    sanitizedNotes || null,
     parsedNotes.inferredDestination && parsedNotes.inferredDestination !== submittedCountry
       ? `Inferred destination: ${parsedNotes.inferredDestination}`
       : null,
     input.source ? `Source: ${input.source}` : null,
+    input.source_site ? `Site: ${input.source_site}` : null,
     input.campaign ? `Campaign: ${input.campaign}` : null
   ]
     .filter(Boolean)
     .join(" | ");
 
   const existingStudent = await getStudentByEmailUnfiltered(input.email);
+  const leadSource = input.lead_source ?? input.source ?? input.source_site ?? existingStudent?.lead_source ?? "Website";
   const registrationPatch: Partial<Student> = {
     full_name: input.full_name,
     phone: input.phone ?? existingStudent?.phone ?? null,
@@ -1905,7 +1933,7 @@ export async function createPublicStudentRegistration(input: {
       input.consultation_upfront_paid ?? existingStudent?.consultation_upfront_paid ?? 0,
     consultation_balance_paid:
       input.consultation_balance_paid ?? existingStudent?.consultation_balance_paid ?? 0,
-    lead_source: input.lead_source ?? input.source ?? existingStudent?.lead_source ?? "Website",
+    lead_source: leadSource,
     referral_code: input.referral_code ?? existingStudent?.referral_code ?? null,
     notes: [existingStudent?.notes ?? null, notes || "Public student registration"].filter(Boolean).join("\n")
   };
@@ -1948,7 +1976,7 @@ export async function createPublicStudentRegistration(input: {
   try {
     await upsertPublicRegistrationProfile({
       studentId: student.id,
-      notes: input.notes,
+      notes: sanitizedNotes,
       program_level: input.program_level ?? null,
       country_interest: effectiveCountryInterest
     });
@@ -1964,8 +1992,9 @@ export async function createPublicStudentRegistration(input: {
       record_label: student.full_name,
       new_value: JSON.stringify({
         source: input.source ?? null,
+        source_site: input.source_site ?? null,
         campaign: input.campaign ?? null,
-        lead_source: input.lead_source ?? input.source ?? "Website",
+        lead_source: leadSource,
         submitted_country_interest: submittedCountry,
         effective_country_interest: effectiveCountryInterest,
         stage: input.stage ?? "lead"

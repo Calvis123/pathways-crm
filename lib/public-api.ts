@@ -55,3 +55,14 @@ export function optionsWithPublicCors(request: Request, methods = "POST, OPTIONS
     headers: getPublicCorsHeaders(request, methods)
   });
 }
+
+export function getPublicRequestSite(request: Request) {
+  const rawSite = request.headers.get("origin") ?? request.headers.get("referer");
+  if (!rawSite) return null;
+
+  try {
+    return new URL(rawSite).hostname;
+  } catch {
+    return rawSite.trim() || null;
+  }
+}

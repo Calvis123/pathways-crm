@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createPublicConsultationLead } from "@/lib/data";
-import { jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
+import { getPublicRequestSite, jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
 import { normalizeKenyanPhone } from "@/lib/utils";
 
 const schema = z.object({
@@ -12,6 +12,7 @@ const schema = z.object({
   program_level: z.string().min(2),
   start_date: z.string().optional(),
   source: z.string().optional(),
+  source_site: z.string().optional(),
   campaign: z.string().optional(),
   referral_code: z.string().optional()
 });
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
 
     const student = await createPublicConsultationLead({
       ...payload,
-      phone
+      phone,
+      source_site: payload.source_site ?? getPublicRequestSite(request)
     });
 
     return jsonWithPublicCors(request, {

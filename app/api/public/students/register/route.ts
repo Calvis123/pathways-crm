@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createPublicStudentRegistration } from "@/lib/data";
 import { stageOptions } from "@/lib/constants";
-import { jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
+import { getPublicRequestSite, jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
 import { normalizeKenyanPhone } from "@/lib/utils";
 
 const stageSchema = z.enum(stageOptions);
@@ -49,6 +49,7 @@ const schema = z.object({
   ielts_payment_status: z.enum(["paid", "unpaid"]).optional(),
   notes: optionalText,
   source: optionalText,
+  source_site: optionalText,
   campaign: optionalText,
   referral_code: optionalText,
   website: optionalText
@@ -74,7 +75,8 @@ export async function POST(request: Request) {
 
     const student = await createPublicStudentRegistration({
       ...payload,
-      phone
+      phone,
+      source_site: payload.source_site ?? getPublicRequestSite(request)
     });
 
     return jsonWithPublicCors(
