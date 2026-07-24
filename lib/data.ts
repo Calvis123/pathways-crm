@@ -2342,6 +2342,9 @@ function assertCanWriteStudentFinance(input: Partial<Student>, role: AppRole | u
 }
 
 function toStudentCsv(students: Student[], includeFinance = true) {
+  // CSV has no column types, so Excel otherwise converts international phone
+  // numbers (for example +254...) to numbers and displays them in scientific notation.
+  const excelText = (value: string) => `="${value.replace(/"/g, '""')}"`;
   const headers = [
     "full_name",
     "email",
@@ -2362,7 +2365,7 @@ function toStudentCsv(students: Student[], includeFinance = true) {
     const row = [
       student.full_name,
       student.email,
-      student.phone ?? "",
+      student.phone ? excelText(student.phone) : "",
       student.country_interest ?? "",
       student.program_level ?? "",
       student.stage,
@@ -2377,7 +2380,7 @@ function toStudentCsv(students: Student[], includeFinance = true) {
       .join(",");
   });
 
-  return [headers.join(","), ...rows].join("\n");
+  return `\uFEFF${[headers.join(","), ...rows].join("\n")}`;
 }
 
 export async function updateStudent(id: string, input: Partial<Student>) {
