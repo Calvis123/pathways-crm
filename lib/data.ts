@@ -2198,6 +2198,126 @@ export async function createPublicStudentRegistration(input: {
   return student;
 }
 
+export async function sendStudentRegistrationNotification(input: {
+  student: Student;
+  source?: string | null;
+  source_site?: string | null;
+  campaign?: string | null;
+}) {
+  const recipients = Array.from(
+    new Set(
+      (process.env.CRM_STUDENT_NOTIFICATION_EMAILS ?? "tobbykimani@barakpathways.com")
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean)
+    )
+  );
+  const resendKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM;
+  let status: "sent" | "pending" | "failed" = "pending";
+  let error: string | null = null;
+
+  if (!resendKey || !emailFrom) {
+    error = "Email provider is not configured.";
+  } else if (recipients.length === 0) {
+    error = "No CRM student notification recipients are configured.";
+  } else {
+    const escapeHtml = (value: string) =>
+      value.replace(/[&<>"']/g, (character) => {
+        const entities: Record<string, string> = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        };
+        return entities[character];
+      });
+    const details = [
+      ["Student", input.student.full_name],
+      ["Email", input.student.email],
+      ["Phone", input.student.phone ?? "Not provided"],
+      ["Location", input.student.location ?? "Not provided"],
+      ["Study destination", input.student.country_interest ?? "Not specified"],
+      ["Programme level", input.student.program_level ?? "Not specified"],
+      ["University", input.student.university_name ?? "Not specified"],
+      ["Source", input.source ?? input.source_site ?? input.student.lead_source ?? "Website"],
+      ["Campaign", input.campaign ?? "Direct"]
+    ];
+    const subject = `New CRM student follow-up: ${input.student.full_name}`;
+    const text = [
+      "Hello Tobby,",
+      "",
+      "A new student has registered in the CRM. Please review their details and follow up with them.",
+      "",
+      ...details.map(([label, value]) => `${label}: ${value}`),
+      "",
+      `Open CRM record: ${getPortalBaseUrl()}/students/${input.student.id}`
+    ].join("\n");
+    const html = `
+      <div style="margin:0;background:#f4f1eb;padding:32px 16px;font-family:Arial,sans-serif;color:#193240">
+        <div style="margin:0 auto;max-width:640px;overflow:hidden;border-radius:20px;background:#ffffff;box-shadow:0 16px 45px rgba(25,50,64,.1)">
+          <div style="background:#193b49;padding:28px 32px;color:#ffffff">
+            <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#e2c665">Barak Pathways CRM</div>
+            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.25">New student registration</h1>
+          </div>
+          <div style="padding:30px 32px">
+            <p style="margin:0 0 8px;color:#193240;font-weight:700;line-height:1.6">Hello Tobby,</p>
+            <p style="margin:0 0 22px;color:#526471;line-height:1.6">A new student has registered in the CRM. Please review their details and follow up with them.</p>
+            <table role="presentation" style="width:100%;border-collapse:collapse">
+              ${details
+                .map(
+                  ([label, value]) => `
+                    <tr>
+                      <td style="border-bottom:1px solid #eee8df;padding:11px 12px 11px 0;font-size:12px;font-weight:700;text-transform:uppercase;color:#82909a">${escapeHtml(label)}</td>
+                      <td style="border-bottom:1px solid #eee8df;padding:11px 0;font-size:14px;font-weight:600;color:#193240">${escapeHtml(value)}</td>
+                    </tr>`
+                )
+                .join("")}
+            </table>
+            <a href="${escapeHtml(`${getPortalBaseUrl()}/students/${input.student.id}`)}" style="display:inline-block;margin-top:26px;border-radius:999px;background:#193b49;padding:13px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700">Open student in CRM</a>
+          </div>
+        </div>
+      </div>`;
+
+    try {
+      const deliveries = await Promise.all(
+        recipients.map((recipient) =>
+          fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ from: emailFrom, to: recipient, subject, text, html })
+          })
+        )
+      );
+      const failedDeliveries = deliveries.filter((response) => !response.ok);
+      status = failedDeliveries.length === 0 ? "sent" : "failed";
+      if (failedDeliveries.length > 0) {
+        const providerErrors = await Promise.all(
+          failedDeliveries.map(async (response) => `${response.status}: ${(await response.text()).slice(0, 500)}`)
+        );
+        error = `${failedDeliveries.length} of ${deliveries.length} notification emails failed (${providerErrors.join("; ")}).`;
+      }
+    } catch {
+      status = "failed";
+      error = "Could not reach the email provider.";
+    }
+  }
+
+  await logAudit({
+    action: "CRM Student Staff Notification",
+    table_name: "students",
+    related_id: input.student.id,
+    record_label: input.student.full_name,
+    new_value: JSON.stringify({ status, recipient_count: recipients.length, error })
+  });
+
+  return { status, recipientCount: recipients.length, error };
+}
+
 export async function updateDocumentStatus(input: { id: string; status: DocumentRecord["status"]; review_notes?: string }) {
   if (!hasSupabaseEnv()) {
     const db = await readDb();

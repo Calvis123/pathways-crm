@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createPublicStudentRegistration } from "@/lib/data";
+import { createPublicStudentRegistration, sendStudentRegistrationNotification } from "@/lib/data";
 import { stageOptions } from "@/lib/constants";
 import { getPublicRequestSite, jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
 import { normalizeKenyanPhone } from "@/lib/utils";
@@ -78,6 +78,17 @@ export async function POST(request: Request) {
       phone,
       source_site: payload.source_site ?? getPublicRequestSite(request)
     });
+
+    try {
+      await sendStudentRegistrationNotification({
+        student,
+        source: payload.source,
+        source_site: payload.source_site ?? getPublicRequestSite(request),
+        campaign: payload.campaign
+      });
+    } catch (notificationError) {
+      console.error("Student registration was saved, but the staff notification failed.", notificationError);
+    }
 
     return jsonWithPublicCors(
       request,
