@@ -12,6 +12,10 @@ const schema = z.object({
   destination: z.string().optional(),
   test_type: z.string().optional(),
   test_format: z.string().optional(),
+  consent: z.preprocess(
+    (value) => value === true || value === "true" || value === "on",
+    z.literal(true, { errorMap: () => ({ message: "Please provide consent before registering." }) })
+  ),
   source: z.string().optional(),
   campaign: z.string().optional(),
   website: z.string().optional()

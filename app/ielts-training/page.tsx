@@ -180,6 +180,18 @@ export default function IeltsTrainingPage() {
                   </Field>
                 </div>
 
+                <label className="mt-1 flex cursor-pointer items-start gap-3 rounded-xl border border-[#e3dbd0] bg-[#faf8f4] px-4 py-3.5">
+                  <input
+                    type="checkbox"
+                    name="consent"
+                    required
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#cbbda9] accent-[#193b49]"
+                  />
+                  <span className="text-xs leading-5 text-slate-600">
+                    I consent to Barak Pathways storing my details and contacting me by phone, WhatsApp, or email about IELTS training and my enquiry.
+                  </span>
+                </label>
+
                 <button
                   type="submit"
                   disabled={status === "submitting"}
