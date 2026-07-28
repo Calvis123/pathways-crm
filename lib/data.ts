@@ -1914,7 +1914,10 @@ export async function sendIeltsRegistrationNotification(input: {
   source?: string | null;
   campaign?: string | null;
 }) {
-  const configuredRecipients = (process.env.IELTS_NOTIFICATION_EMAILS ?? "tobbykimani@barakpathways.com")
+  const configuredRecipients = (
+    process.env.IELTS_NOTIFICATION_EMAILS ??
+    "tobbykimani@barakpathways.com,jael@barakpathways.com"
+  )
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
