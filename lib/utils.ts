@@ -31,7 +31,7 @@ export function slugify(value: string) {
 
 export function normalizeKenyanPhone(value: string) {
   const cleaned = value.replace(/[^\d+]/g, "");
-  const pattern = /^(\+254|254|0)?([17-9]\d{8})$/;
+  const pattern = /^(\+254|254|0)?([17]\d{8})$/;
   const match = cleaned.match(pattern);
 
   if (!match) return null;

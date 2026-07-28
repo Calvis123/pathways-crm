@@ -1829,48 +1829,230 @@ export async function createPublicIeltsLead(input: {
   location?: string | null;
   target_score?: string | null;
   destination?: string | null;
+  test_type?: string | null;
+  test_format?: string | null;
   source?: string | null;
   campaign?: string | null;
 }) {
   const notes = [
     input.target_score ? `Target Score: ${input.target_score}` : null,
     input.destination ? `Destination: ${input.destination}` : null,
+    input.test_type ? `Test Type: ${input.test_type}` : null,
+    input.test_format ? `Test Format: ${input.test_format}` : null,
     input.source ? `Source: ${input.source}` : null,
     input.campaign ? `Campaign: ${input.campaign}` : null
   ]
     .filter(Boolean)
     .join(" | ");
 
-  const student = await createStudent({
-    full_name: input.full_name,
-    email: input.email,
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const existingStudent = await getStudentByEmailUnfiltered(normalizedEmail);
+  const studentPatch: Partial<Student> = {
+    full_name: input.full_name.trim(),
     phone: input.phone,
-    location: input.location ?? null,
-    country_interest: input.destination ?? null,
+    location: input.location ?? existingStudent?.location ?? null,
+    country_interest: input.destination ?? existingStudent?.country_interest ?? null,
     program_level: "IELTS Training",
     stage: "lead",
-    consultation_requested: false,
     ielts_enrolled: true,
-    ielts_payment_status: "unpaid",
-    lead_source: input.source ?? "facebook_ielts",
-    notes: notes || "Public IELTS training signup",
-    created_by: null
-  });
+    ielts_payment_status: existingStudent?.ielts_payment_status ?? "unpaid",
+    lead_source: input.source ?? existingStudent?.lead_source ?? "facebook_ielts",
+    notes: [existingStudent?.notes ?? null, notes || "Public IELTS training signup"].filter(Boolean).join("\n")
+  };
+
+  let student: Student;
+  if (existingStudent) {
+    const updatedAt = new Date().toISOString();
+    if (!hasSupabaseEnv()) {
+      const db = await readDb();
+      student = { ...existingStudent, ...studentPatch, updated_at: updatedAt };
+      db.students = db.students.map((item) => (item.id === existingStudent.id ? student : item));
+      await writeLocalDb(db);
+    } else {
+      const { data, error } = await admin()
+        .from("students")
+        .update({ ...studentPatch, updated_at: updatedAt })
+        .eq("id", existingStudent.id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      student = data as Student;
+    }
+  } else {
+    student = await createStudent({
+      ...studentPatch,
+      email: normalizedEmail,
+      consultation_requested: false,
+      created_by: null
+    });
+  }
 
   await logAudit({
-    action: "Public IELTS Lead Captured",
+    action: existingStudent ? "Public IELTS Lead Updated" : "Public IELTS Lead Captured",
     table_name: "students",
     related_id: student.id,
     record_label: student.full_name,
     new_value: JSON.stringify({
       destination: input.destination ?? null,
       target_score: input.target_score ?? null,
+      test_type: input.test_type ?? null,
+      test_format: input.test_format ?? null,
       source: input.source ?? "facebook_ielts",
       campaign: input.campaign ?? null
     })
   });
 
   return student;
+}
+
+export async function sendIeltsRegistrationNotification(input: {
+  student: Student;
+  target_score?: string | null;
+  destination?: string | null;
+  test_type?: string | null;
+  test_format?: string | null;
+  source?: string | null;
+  campaign?: string | null;
+}) {
+  const configuredRecipients = (process.env.IELTS_NOTIFICATION_EMAILS ?? "tobbykimani@barakpathways.com")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  let recipients = configuredRecipients;
+  if (recipients.length === 0) {
+    const users = await getUsers();
+    recipients = users
+      .filter(
+        (user) =>
+          user.status === "active" &&
+          ["ielts_trainer", "admin", "superadmin"].includes(user.role) &&
+          Boolean(user.email)
+      )
+      .map((user) => user.email.trim().toLowerCase());
+  }
+  recipients = Array.from(new Set(recipients));
+
+  const resendKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM;
+  let status: "sent" | "pending" | "failed" = "pending";
+  let error: string | null = null;
+
+  if (!resendKey || !emailFrom) {
+    error = "Email provider is not configured.";
+  } else if (recipients.length === 0) {
+    error = "No IELTS notification recipients are configured.";
+  } else {
+    const escapeHtml = (value: string) =>
+      value.replace(/[&<>"']/g, (character) => {
+        const entities: Record<string, string> = {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;"
+        };
+        return entities[character];
+      });
+    const details = [
+      ["Student", input.student.full_name],
+      ["Email", input.student.email],
+      ["WhatsApp", input.student.phone ?? "Not provided"],
+      ["Location", input.student.location ?? "Not provided"],
+      ["IELTS test", input.test_type ?? "Not specified"],
+      ["Preferred format", input.test_format ?? "Not specified"],
+      ["Target band", input.target_score ?? "Not specified"],
+      ["Study destination", input.destination ?? "Not specified"],
+      ["Source", input.source ?? "Website"],
+      ["Campaign", input.campaign ?? "Direct"]
+    ];
+    const subject = `IELTS follow-up required: ${input.student.full_name}`;
+    const text = [
+      "Hello Tobby,",
+      "",
+      "A new student has registered for IELTS training. Please follow up with them using the details below.",
+      "",
+      ...details.map(([label, value]) => `${label}: ${value}`),
+      "",
+      `Open CRM record: ${getPortalBaseUrl()}/students/${input.student.id}`
+    ].join("\n");
+    const html = `
+      <div style="margin:0;background:#f4f1eb;padding:32px 16px;font-family:Arial,sans-serif;color:#193240">
+        <div style="margin:0 auto;max-width:640px;overflow:hidden;border-radius:20px;background:#ffffff;box-shadow:0 16px 45px rgba(25,50,64,.1)">
+          <div style="background:#193b49;padding:28px 32px;color:#ffffff">
+            <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#e2c665">Barak Pathways IELTS</div>
+            <h1 style="margin:10px 0 0;font-size:26px;line-height:1.25">New IELTS registration</h1>
+          </div>
+          <div style="padding:30px 32px">
+            <p style="margin:0 0 8px;color:#193240;font-weight:700;line-height:1.6">Hello Tobby,</p>
+            <p style="margin:0 0 22px;color:#526471;line-height:1.6">A new student has registered for IELTS training. Please follow up with them using the details below.</p>
+            <table role="presentation" style="width:100%;border-collapse:collapse">
+              ${details
+                .map(
+                  ([label, value]) => `
+                    <tr>
+                      <td style="border-bottom:1px solid #eee8df;padding:11px 12px 11px 0;font-size:12px;font-weight:700;text-transform:uppercase;color:#82909a">${escapeHtml(label)}</td>
+                      <td style="border-bottom:1px solid #eee8df;padding:11px 0;font-size:14px;font-weight:600;color:#193240">${escapeHtml(value)}</td>
+                    </tr>`
+                )
+                .join("")}
+            </table>
+            <a href="${escapeHtml(`${getPortalBaseUrl()}/students/${input.student.id}`)}" style="display:inline-block;margin-top:26px;border-radius:999px;background:#193b49;padding:13px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700">Open student in CRM</a>
+          </div>
+        </div>
+      </div>`;
+
+    try {
+      const deliveries = await Promise.all(
+        recipients.map((recipient) =>
+          fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              from: emailFrom,
+              to: recipient,
+              subject,
+              text,
+              html
+            })
+          })
+        )
+      );
+      const failedDeliveries = deliveries.filter((response) => !response.ok);
+      status = failedDeliveries.length === 0 ? "sent" : "failed";
+      if (failedDeliveries.length > 0) {
+        const providerErrors = await Promise.all(
+          failedDeliveries.map(async (response) => {
+            const detail = (await response.text()).slice(0, 500);
+            return `${response.status}${detail ? `: ${detail}` : ""}`;
+          })
+        );
+        error = `${failedDeliveries.length} of ${deliveries.length} notification emails failed (${providerErrors.join("; ")}).`;
+      } else {
+        error = null;
+      }
+    } catch {
+      status = "failed";
+      error = "Could not reach the email provider.";
+    }
+  }
+
+  await logAudit({
+    action: "IELTS Staff Notification",
+    table_name: "students",
+    related_id: input.student.id,
+    record_label: input.student.full_name,
+    new_value: JSON.stringify({
+      status,
+      recipient_count: recipients.length,
+      error
+    })
+  });
+
+  return { status, recipientCount: recipients.length, error };
 }
 
 export async function createPublicStudentRegistration(input: {

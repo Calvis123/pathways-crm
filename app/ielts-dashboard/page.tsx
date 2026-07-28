@@ -69,7 +69,8 @@ export default async function IeltsDashboardPage({
     targetScore: extractTargetScore(student),
     currentScore: student.ielts_overall_score ?? null,
     sessionCount: student.ielts_session_count ?? 0,
-    testDate: student.ielts_test_date ?? null
+    testDate: student.ielts_test_date ?? null,
+    paymentStatus: student.ielts_payment_status ?? null
   }));
 
   return (

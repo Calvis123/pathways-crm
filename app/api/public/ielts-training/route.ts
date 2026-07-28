@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createPublicIeltsLead } from "@/lib/data";
+import { createPublicIeltsLead, sendIeltsRegistrationNotification } from "@/lib/data";
 import { jsonWithPublicCors, optionsWithPublicCors } from "@/lib/public-api";
 import { normalizeKenyanPhone } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ const schema = z.object({
   location: z.string().optional(),
   target_score: z.string().optional(),
   destination: z.string().optional(),
+  test_type: z.string().optional(),
+  test_format: z.string().optional(),
   source: z.string().optional(),
   campaign: z.string().optional(),
   website: z.string().optional()
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
     if (!phone) {
       return jsonWithPublicCors(
         request,
-        { error: "Please enter a valid Kenyan phone number." },
+        { error: "Enter a valid Kenyan phone number beginning with 07, 01, +2547, or +2541." },
         { status: 400 }
       );
     }
@@ -36,6 +38,20 @@ export async function POST(request: Request) {
       ...payload,
       phone
     });
+
+    try {
+      await sendIeltsRegistrationNotification({
+        student,
+        target_score: payload.target_score,
+        destination: payload.destination,
+        test_type: payload.test_type,
+        test_format: payload.test_format,
+        source: payload.source,
+        campaign: payload.campaign
+      });
+    } catch (notificationError) {
+      console.error("IELTS registration was saved, but the staff notification failed.", notificationError);
+    }
 
     return jsonWithPublicCors(request, {
       ok: true,
